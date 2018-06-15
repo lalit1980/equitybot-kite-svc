@@ -1,1 +1,1 @@
-# equitybot-kite-svc
+# equity-bot-svc
