@@ -508,11 +508,11 @@ public class TradePortZerodhaConnect {
 					for(int i=0;i<ticks.size();i++) {
 						com.equitybot.trade.db.mongodb.tick.domain.Tick tick=convertTickModel(ticks.get(i),ticks.get(i).getInstrumentToken()+"_"+ticks.get(i).getTickTimestamp().toInstant().toString());
 						String newJson = new Gson().toJson(tick);
-						LOGGER.info("" + newJson);
+						LOGGER.info("\n" + newJson);
 						kafkaTemplate.send(tickProducerTopic, newJson);
 					}
 				}else {
-					LOGGER.info("Tick Not Received");
+					LOGGER.info("\nTick Not Received");
 				}
 			}
 		});
@@ -630,11 +630,11 @@ public class TradePortZerodhaConnect {
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
 								public void onSuccess(SendResult<String, String> result) {
-									LOGGER.info("Sent message: " + result);
+									LOGGER.info("\nSent message: " + result);
 								}
 								@Override
 								public void onFailure(Throwable ex) {
-									LOGGER.info("Failed to send message");
+									LOGGER.info("\nFailed to send message");
 								}
 							});
 						} catch (InterruptedException e) {
