@@ -1,6 +1,7 @@
 package com.equitybot.trade.db.mongodb.instrument.domain;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;;
 
 @Document(collection = "Instruments")
@@ -12,6 +13,7 @@ public class InstrumentModel{
 	private static final long serialVersionUID = 1800963524269704664L;
 	@Id
 	private long id;
+	@Indexed(name = "instrumentToken_index")
 	private long instrumentToken;
 	private long exchange_token;
 	private String tradingSymbol;
