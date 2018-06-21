@@ -3,6 +3,7 @@ package com.equitybot.trade.ws.controller.main;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,14 +14,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.ta4j.core.TimeSeries;
 
-import com.equitybot.trade.util.DateFormatUtil;
 import com.equitybot.trade.ws.service.kite.TradePortZerodhaConnect;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
-import com.zerodhatech.models.HistoricalData;
 
 @RestController
 @RequestMapping("/api")
@@ -38,41 +36,34 @@ public class InitiateKiteController {
 		}
 	}
 
-	@GetMapping("/process/v1.0/{userId}/{requestToken}/{fromDate}/{toDate}/{instrumentToken}/{interval}/{continuous}")
-	public HistoricalData getHistoricalData(@PathVariable("userId") String userId,
-								  @PathVariable("requestToken") String requestToken,
-								  @PathVariable("fromDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date fromDate ,
-								  @PathVariable("toDate")  @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
-								  @PathVariable("instrumentToken") String instrumentToken,
-								  @PathVariable("interval") String interval,
-								  @PathVariable("continuous") boolean continuous) {
-		HistoricalData historicalData=null;
+	@PostMapping("/process/v1.0/{userId}/{requestToken}/{fromDate}/{toDate}/{instrumentToken}/{interval}/{continuous}")
+	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> getHistoricalData(@PathVariable("userId") String userId,
+			@PathVariable("requestToken") String requestToken,
+			@PathVariable("fromDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date fromDate,
+			@PathVariable("toDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
+			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) {
 		try {
-			
-			KiteConnect kiteconnect=tradePortZerodhaConnect.getKiteConnectSession("XI3306", requestToken);
-			historicalData=kiteconnect.getHistoricalData(fromDate, toDate, instrumentToken, interval, continuous);
-			DateFormatUtil.loadHistoricalDataSeries(historicalData, instrumentToken);
-			return historicalData;
+			System.out.println("Hello from Server");
+			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
+			return tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, fromDate, toDate, interval, false);
 		} catch (JSONException | IOException | KiteException e) {
+			return null;
 		}
-		return historicalData;
+		
 	}
 
 	@PostMapping("/process/v1.0/{userId}/{requestToken}/{backTestingFlag}")
-	public void startTick(@PathVariable("userId") String userId, 
-						  @PathVariable("requestToken") String requestToken,
-						  @PathVariable("backTestingFlag") boolean backTestingFlag,
-			              @RequestBody ArrayList<Long> instrumentTokens) {
-		if(backTestingFlag) {
-			tradePortZerodhaConnect.startBackTesting(instrumentTokens);
-		}else {
-			try {
-				tradePortZerodhaConnect.tickerUsage(tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken),instrumentTokens);
-			} catch (IOException | WebSocketException | KiteException e) {
-				e.printStackTrace();
-			}	
+	public void startTick(@PathVariable("userId") String userId, @PathVariable("requestToken") String requestToken,
+
+			@RequestBody ArrayList<Long> instrumentTokens) {
+
+		try {
+			tradePortZerodhaConnect.tickerUsage(tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken),
+					instrumentTokens);
+		} catch (IOException | WebSocketException | KiteException e) {
+			e.printStackTrace();
 		}
-		
+
 	}
 
 }

@@ -4,6 +4,7 @@ import java.text.DateFormat;
 import java.text.Format;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,10 +17,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
+import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
 
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
+import com.equitybot.trade.db.mongodb.tick.domain.Tick;
+import com.fasterxml.jackson.datatype.jsr310.ser.ZonedDateTimeSerializer;
 import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Instrument;
 
@@ -31,6 +37,7 @@ public class DateFormatUtil {
 
 	public static final String MONGODB_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
 	public static final String TA4J = "yyyy-MM-dd";
+	
 	private static final DateTimeFormatter MONGODB_DATE_FORMATER = DateTimeFormatter.ofPattern(MONGODB_DATE_FORMAT);
 	private static final DateTimeFormatter KITE_TICK_TIMESTAMP_FORMATER = DateTimeFormatter.ofPattern(KITE_TICK_TIMESTAMP_FORMAT);
 
@@ -40,9 +47,9 @@ public class DateFormatUtil {
 		return formatter.format(date);
 	}
 
-	public static Date fromISO8601UTC(String dateStr, String dateFormat) {
+	public static Date fromISO8601UTC(String dateStr) {
 		TimeZone tz = TimeZone.getTimeZone("UTC");
-		DateFormat df = new SimpleDateFormat(dateFormat);
+		DateFormat df = new SimpleDateFormat(MONGODB_DATE_FORMAT);
 		df.setTimeZone(tz);
 
 		try {
@@ -83,22 +90,27 @@ public class DateFormatUtil {
 		return instrumentModelList;
 	}
 	
-	public static TimeSeries loadHistoricalDataSeries(HistoricalData historicalData, String instrumentTocken) {
-		TimeSeries series = new BaseTimeSeries(instrumentTocken + "_bars");
+	public static List<Tick> loadHistoricalDataSeries(HistoricalData historicalData, long instrumentToken) {
+		List<Tick> tickList=new ArrayList<Tick>();
 		if (historicalData != null && historicalData.dataArrayList!=null && historicalData.dataArrayList.size() > 0) {
 				List<HistoricalData> listArray=historicalData.dataArrayList;
-				listArray.forEach(listArr -> {
-					//series.addBar(LocalDate.parse(listArr.timeStamp, MONGODB_DATE_FORMATER).atStartOfDay(ZoneId.systemDefault()), listArr.open, listArr.high, listArr.low, listArr.close,listArr.volume);
-					 System.out.println("Series: " + series.getName() + " (" + series.getSeriesPeriodDescription() + ")");
-				        System.out.println("Number of bars: " + series.getBarCount());
-				        System.out.println(" Bar: \n"
-				                + "\tVolume: " + series.getBar(0).getVolume() + "\n"
-				                + "\tOpen price: " + series.getBar(0).getOpenPrice()+ "\n"
-				                + "\tClose price: " + series.getBar(0).getClosePrice());
-				});
-				
+				for (HistoricalData historicalData2 : listArray) {
+					Date from = fromISO8601UTC(historicalData2.timeStamp);
+					System.out.println(from);
+					Tick tick=new Tick();
+					tick.setTickTimestamp(from);
+					tick.setClosePrice(historicalData2.close);
+					tick.setOpenPrice(historicalData2.open);
+					tick.setHighPrice(historicalData2.high);
+					tick.setLowPrice(historicalData2.low);
+					tick.setLastTradedPrice(historicalData2.close);
+					tick.setLastTradedQuantity(historicalData2.volume);
+					tick.setInstrumentToken(instrumentToken);
+					tickList.add(tick);
+					
+				}
 		}
-		return series;
+		return tickList;
 	}
 
 	public static ZonedDateTime convertKiteTickTimestampFormat(String kiteTimestamp) throws ParseException {

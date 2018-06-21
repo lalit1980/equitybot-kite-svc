@@ -5,7 +5,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -25,6 +27,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.db.mongodb.tick.repository.TickRepository;
+import com.equitybot.trade.util.DateFormatUtil;
 import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
@@ -58,7 +61,7 @@ import com.zerodhatech.ticker.OnTicks;
 @Component
 public class TradePortZerodhaConnect {
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
-	
+
 	@Value("${spring.kafka.producer.zerodha-tick-publish-topic}")
 	private String tickProducerTopic;
 
@@ -367,25 +370,24 @@ public class TradePortZerodhaConnect {
 	}
 
 	/** Get historical data for an instrument. */
-	public void getHistoricalData(KiteConnect kiteConnect) throws KiteException, IOException {
+	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> getHistoricalData(KiteConnect kiteConnect,
+			ArrayList<Long> InstrumentToken, Date fromDate, Date toDate, String interval, boolean flag)
+			throws KiteException, IOException {
 		/**
 		 * Get historical data dump, requires from and to date, intrument token,
 		 * interval, continuous (for expired F&O contracts) returns historical data
 		 * object which will have list of historical data inside the object.
 		 */
-		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		Date from = new Date();
-		Date to = new Date();
-		try {
-			from = formatter.parse("2018-01-03 12:00:00");
-			to = formatter.parse("2018-01-03 22:49:12");
-		} catch (ParseException e) {
-			e.printStackTrace();
+		ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> tickList = new ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>>();
+
+		for (Iterator<Long> iterator = InstrumentToken.iterator(); iterator.hasNext();) {
+			Long instrumentToken = iterator.next();
+			HistoricalData historicalData = kiteConnect.getHistoricalData(fromDate, toDate,
+					String.valueOf(instrumentToken), interval, false);
+			tickList.add(DateFormatUtil.loadHistoricalDataSeries(historicalData, instrumentToken));
 		}
-		HistoricalData historicalData = kiteConnect.getHistoricalData(from, to, "11946498", "15minute", false);
-		LOGGER.info("" + historicalData.dataArrayList.size());
-		LOGGER.info("" + historicalData.dataArrayList.get(0).volume);
-		LOGGER.info("" + historicalData.dataArrayList.get(historicalData.dataArrayList.size() - 1).volume);
+
+		return tickList;
 	}
 
 	/** Retrieve mf instrument dump */
@@ -505,14 +507,16 @@ public class TradePortZerodhaConnect {
 			@Override
 			public void onTicks(ArrayList<Tick> ticks) {
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
-					for(int i=0;i<ticks.size();i++) {
-						com.equitybot.trade.db.mongodb.tick.domain.Tick tick=convertTickModel(ticks.get(i),ticks.get(i).getInstrumentToken()+"_"+ticks.get(i).getTickTimestamp().toInstant().toString());
+					for (int i = 0; i < ticks.size(); i++) {
+						com.equitybot.trade.db.mongodb.tick.domain.Tick tick = convertTickModel(ticks.get(i),
+								ticks.get(i).getInstrumentToken() + "_"
+										+ ticks.get(i).getTickTimestamp().toInstant().toString());
 						String newJson = new Gson().toJson(tick);
-						LOGGER.info("\n" + newJson);
+						LOGGER.info("" + newJson);
 						kafkaTemplate.send(tickProducerTopic, newJson);
 					}
-				}else {
-					LOGGER.info("\nTick Not Received");
+				} else {
+					LOGGER.info("Tick Not Received");
 				}
 			}
 		});
@@ -524,8 +528,6 @@ public class TradePortZerodhaConnect {
 		LOGGER.info("" + isConnected);
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
-
-	
 
 	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(Tick tick, String id) {
 		com.equitybot.trade.db.mongodb.tick.domain.Tick tickModel = new com.equitybot.trade.db.mongodb.tick.domain.Tick();
@@ -614,38 +616,45 @@ public class TradePortZerodhaConnect {
 		this.kiteSessionList = kiteSessionList;
 	}
 
-	public void startBackTesting(List<Long> instrumentTokens) {
-		if(instrumentTokens!=null && instrumentTokens.size()>0) {
-			for (Long long1 : instrumentTokens) {
-				List<com.equitybot.trade.db.mongodb.tick.domain.Tick> tickList = tickRepository
-						.findByInstrumentToken(long1);
-				if(tickList!=null && tickList.size()>0) {
-					for(int i=0;i<tickList.size();i++) {
-						
-						//LOGGER.info("JSON message: "+newJson);
+	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> startBackTesting(KiteConnect kiteconnect, ArrayList<Long> instrumentTokens, Date fromDate, Date toDate,
+			String interval, boolean continuous) throws IOException, KiteException {
+		ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> tickList = getHistoricalData(kiteconnect,
+				instrumentTokens, fromDate, toDate, interval, continuous);
+		Calendar customCalendar = Calendar.getInstance();
+		if (tickList != null && tickList.size() > 0) {
+			for (int i = 0; i < tickList.size(); i++) {
+				if (tickList.get(i) != null && tickList.get(i).size() > 0) {
+					List<com.equitybot.trade.db.mongodb.tick.domain.Tick> list=tickList.get(i);
+					for (int j = 0; j < list.size(); j++) {
 						try {
+							com.equitybot.trade.db.mongodb.tick.domain.Tick tick=list.get(j);
+							tick.setBackTestFlag(true);
+							customCalendar.add(Calendar.MINUTE, 1);
+							tick.setTickTimestamp(customCalendar.getTime());
 							Thread.sleep(1000);
-							String newJson = new Gson().toJson(tickList.get(i));
-							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
+							tick.setId(tick.getInstrumentToken() + "_"
+									+ tick.getTickTimestamp().toInstant().toString());
+							String newJson = new Gson().toJson(tick);
+							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,
+									newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
 								public void onSuccess(SendResult<String, String> result) {
 									LOGGER.info("\nSent message: " + result);
 								}
+
 								@Override
 								public void onFailure(Throwable ex) {
-									LOGGER.info("\nFailed to send message");
+									LOGGER.info("Failed to send message");
 								}
 							});
 						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						
 					}
 				}
 			}
-						
 		}
+		return tickList;
 	}
 }

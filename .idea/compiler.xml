@@ -9,7 +9,7 @@
         <module name="equitybot-kite-svc" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel target="8">
+    <bytecodeTargetLevel>
       <module name="equitybot-kite-svc" target="1.8" />
     </bytecodeTargetLevel>
   </component>
