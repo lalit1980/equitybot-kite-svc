@@ -43,7 +43,6 @@ public class InitiateKiteController {
 			@PathVariable("toDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
 			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) {
 		try {
-			System.out.println("Hello from Server");
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
 			return tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, fromDate, toDate, interval, false);
 		} catch (JSONException | IOException | KiteException e) {

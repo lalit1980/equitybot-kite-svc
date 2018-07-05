@@ -4,28 +4,16 @@ import java.text.DateFormat;
 import java.text.Format;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseTimeSeries;
-import org.ta4j.core.Decimal;
-import org.ta4j.core.TimeSeries;
-
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.equitybot.trade.db.mongodb.tick.domain.Tick;
-import com.fasterxml.jackson.datatype.jsr310.ser.ZonedDateTimeSerializer;
 import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Instrument;
 
@@ -38,9 +26,6 @@ public class DateFormatUtil {
 	public static final String MONGODB_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
 	public static final String TA4J = "yyyy-MM-dd";
 	
-	private static final DateTimeFormatter MONGODB_DATE_FORMATER = DateTimeFormatter.ofPattern(MONGODB_DATE_FORMAT);
-	private static final DateTimeFormatter KITE_TICK_TIMESTAMP_FORMATER = DateTimeFormatter.ofPattern(KITE_TICK_TIMESTAMP_FORMAT);
-
 	public static String toISO8601UTC(Date date, String dateFormat) {
 
 		Format formatter = new SimpleDateFormat(MONGODB_DATE_FORMAT);
@@ -48,9 +33,9 @@ public class DateFormatUtil {
 	}
 
 	public static Date fromISO8601UTC(String dateStr) {
-		TimeZone tz = TimeZone.getTimeZone("UTC");
+		TimeZone timeZone = TimeZone.getTimeZone("Asia/Kolkata");
 		DateFormat df = new SimpleDateFormat(MONGODB_DATE_FORMAT);
-		df.setTimeZone(tz);
+		df.setTimeZone(timeZone);
 
 		try {
 			return df.parse(dateStr);
@@ -96,7 +81,7 @@ public class DateFormatUtil {
 				List<HistoricalData> listArray=historicalData.dataArrayList;
 				for (HistoricalData historicalData2 : listArray) {
 					Date from = fromISO8601UTC(historicalData2.timeStamp);
-					System.out.println(from);
+					System.out.println(" From: "+from);
 					Tick tick=new Tick();
 					tick.setTickTimestamp(from);
 					tick.setClosePrice(historicalData2.close);
@@ -114,7 +99,9 @@ public class DateFormatUtil {
 	}
 
 	public static ZonedDateTime convertKiteTickTimestampFormat(String kiteTimestamp) throws ParseException {
-		return ZonedDateTime.ofInstant(new SimpleDateFormat(KITE_TICK_TIMESTAMP_FORMAT, Locale.US).parse(kiteTimestamp).toInstant(), ZoneId.systemDefault());
+		SimpleDateFormat sdf=new SimpleDateFormat(KITE_TICK_TIMESTAMP_FORMAT,Locale.US);
+		ZoneId zoneid1 = ZoneId.of("Asia/Kolkata");  
+		return ZonedDateTime.ofInstant(sdf.parse(kiteTimestamp).toInstant(), zoneid1);
 	}
 	
 }

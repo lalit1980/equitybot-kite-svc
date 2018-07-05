@@ -1,8 +1,6 @@
 package com.equitybot.trade.ws.service.kite;
 
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -11,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -368,7 +367,6 @@ public class TradePortZerodhaConnect {
 		String[] instruments = { "256265", "BSE:INFY", "NSE:INFY", "NSE:NIFTY 50" };
 		LOGGER.info("" + kiteConnect.getLTP(instruments).get("256265").lastPrice);
 	}
-
 	/** Get historical data for an instrument. */
 	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> getHistoricalData(KiteConnect kiteConnect,
 			ArrayList<Long> InstrumentToken, Date fromDate, Date toDate, String interval, boolean flag)
@@ -620,7 +618,6 @@ public class TradePortZerodhaConnect {
 			String interval, boolean continuous) throws IOException, KiteException {
 		ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> tickList = getHistoricalData(kiteconnect,
 				instrumentTokens, fromDate, toDate, interval, continuous);
-		Calendar customCalendar = Calendar.getInstance();
 		if (tickList != null && tickList.size() > 0) {
 			for (int i = 0; i < tickList.size(); i++) {
 				if (tickList.get(i) != null && tickList.get(i).size() > 0) {
@@ -629,11 +626,8 @@ public class TradePortZerodhaConnect {
 						try {
 							com.equitybot.trade.db.mongodb.tick.domain.Tick tick=list.get(j);
 							tick.setBackTestFlag(true);
-							customCalendar.add(Calendar.MINUTE, 1);
-							tick.setTickTimestamp(customCalendar.getTime());
 							Thread.sleep(1000);
-							tick.setId(tick.getInstrumentToken() + "_"
-									+ tick.getTickTimestamp().toInstant().toString());
+							tick.setId( UUID.randomUUID().toString());
 							String newJson = new Gson().toJson(tick);
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,
 									newJson);
@@ -642,7 +636,6 @@ public class TradePortZerodhaConnect {
 								public void onSuccess(SendResult<String, String> result) {
 									LOGGER.info("\nSent message: " + result);
 								}
-
 								@Override
 								public void onFailure(Throwable ex) {
 									LOGGER.info("Failed to send message");
