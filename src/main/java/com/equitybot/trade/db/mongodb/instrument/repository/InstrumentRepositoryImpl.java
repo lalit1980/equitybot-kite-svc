@@ -77,12 +77,13 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 	}
 
 	@Override
-	public List<Long> findByOptions(String exchange, String segment, String tradingSymbol) {
+	public List<InstrumentModel> findByOptions(String exchange, String segment, String tradingSymbol) {
 		
 		Query query = new Query();
 		query.addCriteria(Criteria.where("tradingSymbol").regex(tradingSymbol).and("segment").is(segment).and("exchange").is(exchange));
 		
 		List<InstrumentModel> list=mongoTemplate.find(query, InstrumentModel.class);
+		/*
 		List<Long> instrumentTokens=new ArrayList<Long>();
 		if(list!=null && list.size()>0) {
 			list.forEach(instrumentModel -> {
@@ -90,7 +91,8 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 			});
 		}
 		return instrumentTokens;
-
+*/
+		return list;
 	}
 
 	@Override

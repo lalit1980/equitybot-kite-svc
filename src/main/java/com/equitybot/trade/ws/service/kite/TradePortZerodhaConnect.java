@@ -506,9 +506,7 @@ public class TradePortZerodhaConnect {
 			public void onTicks(ArrayList<Tick> ticks) {
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
 					for (int i = 0; i < ticks.size(); i++) {
-						com.equitybot.trade.db.mongodb.tick.domain.Tick tick = convertTickModel(ticks.get(i),
-								ticks.get(i).getInstrumentToken() + "_"
-										+ ticks.get(i).getTickTimestamp().toInstant().toString());
+						com.equitybot.trade.db.mongodb.tick.domain.Tick tick = convertTickModel(ticks.get(i));
 						String newJson = new Gson().toJson(tick);
 						LOGGER.info("" + newJson);
 						kafkaTemplate.send(tickProducerTopic, newJson);
@@ -527,13 +525,13 @@ public class TradePortZerodhaConnect {
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
 
-	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(Tick tick, String id) {
+	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(Tick tick) {
 		com.equitybot.trade.db.mongodb.tick.domain.Tick tickModel = new com.equitybot.trade.db.mongodb.tick.domain.Tick();
 		tickModel.setAverageTradePrice(tick.getAverageTradePrice());
 		tickModel.setChange(tick.getChange());
 		tickModel.setClosePrice(tick.getClosePrice());
 		tickModel.setHighPrice(tick.getHighPrice());
-		tickModel.setId(id);
+		tickModel.setId(UUID.randomUUID().toString());
 		tickModel.setInstrumentToken(tick.getInstrumentToken());
 		tickModel.setLastTradedPrice(tick.getLastTradedPrice());
 		tickModel.setLastTradedQuantity(tick.getLastTradedQuantity());
