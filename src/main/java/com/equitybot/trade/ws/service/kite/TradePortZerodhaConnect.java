@@ -624,7 +624,7 @@ public class TradePortZerodhaConnect {
 						try {
 							com.equitybot.trade.db.mongodb.tick.domain.Tick tick=list.get(j);
 							tick.setBackTestFlag(true);
-							Thread.sleep(1000);
+							Thread.sleep(300);
 							tick.setId( UUID.randomUUID().toString());
 							String newJson = new Gson().toJson(tick);
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,
@@ -632,7 +632,7 @@ public class TradePortZerodhaConnect {
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
 								public void onSuccess(SendResult<String, String> result) {
-									LOGGER.info("\nSent message: " + result);
+									LOGGER.info("Sent message: " + result);
 								}
 								@Override
 								public void onFailure(Throwable ex) {
