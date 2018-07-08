@@ -23,7 +23,7 @@ public interface InstrumentRespositoryCustom {
 
 	public List<InstrumentModel> findByExchange(String exchange);
 
-	public List<InstrumentModel> findByOptions(String exchange, String segment,
+	public List<Long> findByOptions(String exchange, String segment,
 			String tradingSymbol);
 
 	public List<InstrumentModel> findByEquity(String exchange, String instrumentType, String name, String segment,

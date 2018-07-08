@@ -69,7 +69,7 @@ public class InstrumentController {
 	}
 
 	@GetMapping("/instrument/v1.0/{exchange}/{segment}/{tradingSymbol}")
-	public List<InstrumentModel> findByOptionsDB(@PathVariable("exchange") String exchange,
+	public List<Long> findByOptionsDB(@PathVariable("exchange") String exchange,
 			@PathVariable("segment") String segment, @PathVariable("tradingSymbol") String tradingSymbol) {
 		return instrumentRepository.findByOptions(exchange, segment, tradingSymbol);
 	}
