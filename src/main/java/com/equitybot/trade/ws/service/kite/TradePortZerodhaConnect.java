@@ -10,6 +10,11 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -65,6 +70,9 @@ public class TradePortZerodhaConnect {
 
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
+	
+	private IgniteCache<Long, Double> cacheLastTradedPrice;
+	private IgniteCache<Long, OrderParams> cacheOrderParams;
 
 	@Autowired
 	PropertyRepository propertyRepository;
@@ -81,7 +89,25 @@ public class TradePortZerodhaConnect {
 		Profile profile = kiteConnect.getProfile();
 		LOGGER.info(profile.userName);
 	}
+	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
+		return cacheLastTradedPrice;
+	}
 
+	public void setCacheLastTradedPrice(IgniteCache<Long, Double> cacheLastTradedPrice) {
+		this.cacheLastTradedPrice = cacheLastTradedPrice;
+	}
+	public TradePortZerodhaConnect() {
+		IgniteConfiguration cfg = new IgniteConfiguration();
+		Ignite ignite = Ignition.start(cfg);
+		Ignition.setClientMode(true);
+		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		this.cacheLastTradedPrice = ignite.getOrCreateCache(ccfg);
+		
+		CacheConfiguration<Long, OrderParams> ccfgOrderParams = new CacheConfiguration<Long, OrderParams>("CachedOrderParams");
+		this.cacheOrderParams = ignite.getOrCreateCache(ccfgOrderParams);
+		
+		
+	}
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteConnect) throws KiteException, IOException {
 		// Get margins returns margin model, you can pass equity or commodity as
@@ -626,6 +652,7 @@ public class TradePortZerodhaConnect {
 							Thread.sleep(300);
 							tick.setId( UUID.randomUUID().toString());
 							String newJson = new Gson().toJson(tick);
+							LOGGER.info("Instrument Token "+ tick.getInstrumentToken()+" Cache last traded price: "+ cacheLastTradedPrice.get(tick.getInstrumentToken()));
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,
 									newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
@@ -646,5 +673,11 @@ public class TradePortZerodhaConnect {
 			}
 		}
 		return tickList;
+	}
+	public IgniteCache<Long, OrderParams> getCacheOrderParams() {
+		return cacheOrderParams;
+	}
+	public void setCacheOrderParams(IgniteCache<Long, OrderParams> cacheOrderParams) {
+		this.cacheOrderParams = cacheOrderParams;
 	}
 }

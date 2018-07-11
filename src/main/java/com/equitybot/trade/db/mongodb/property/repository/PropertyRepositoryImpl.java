@@ -29,7 +29,8 @@ public class PropertyRepositoryImpl implements PropertyRespositoryCustom {
 
 	public List<KiteProperty> findByUserId(String userId) {
 		Query query = new Query(Criteria.where("userId").is(userId));
-		return mongoTemplate.find(query, KiteProperty.class);
+		List<KiteProperty> list=mongoTemplate.find(query, KiteProperty.class);
+		return list;
 	}
 
 	public DeleteResult deleteByUserId(String userId) {
