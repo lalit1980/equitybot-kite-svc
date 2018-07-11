@@ -61,7 +61,7 @@ import com.zerodhatech.ticker.OnTicks;
 public class TradePortZerodhaConnect {
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
-	@Value("${spring.kafka.producer.zerodha-tick-publish-topic}")
+	@Value("${spring.kafka.producer.topic-kite-tick}")
 	private String tickProducerTopic;
 
 	@Autowired
@@ -609,8 +609,7 @@ public class TradePortZerodhaConnect {
 							Thread.sleep(300);
 							String newJson = new Gson().toJson(tick);
 							LOGGER.info("Instrument Token "+ tick.getInstrumentToken()+" Cache last traded price: "+ cacheLastTradedPrice.get(tick.getInstrumentToken()));
-							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,
-									newJson);
+							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
 								public void onSuccess(SendResult<String, String> result) {

@@ -15,7 +15,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 
-import com.equitybot.trade.messaging.kafka.listener.TickReceiverListener;
+import com.equitybot.trade.messaging.kafka.listener.OrderReceiverListener;
 
 @EnableKafka
 @Configuration
@@ -23,8 +23,8 @@ public class KafkaConsumerTradeOrderConfig {
 	 	@Value("${spring.kafka.bootstrap-servers}")
 	    private String bootstrapServers;
 	 	
-	 	//@Value("${spring.kafka.consumer.group-id-tick}")
-	   // private String groupId;
+	 	@Value("${spring.kafka.consumer.group-id-tradeorder}")
+	 	private String groupId;
 	 	
 	 	@Bean
 		KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> kafkaListenerContainerFactory() {
@@ -49,13 +49,13 @@ public class KafkaConsumerTradeOrderConfig {
 			propsMap.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "15000");
 			propsMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 			propsMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-			propsMap.put(ConsumerConfig.GROUP_ID_CONFIG, "trade-port-group");
+			propsMap.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 			propsMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 			return propsMap;
 		}
 
 		@Bean
-		public TickReceiverListener listener() {
-			return new TickReceiverListener();
+		public OrderReceiverListener listener() {
+			return new OrderReceiverListener();
 		}
 }

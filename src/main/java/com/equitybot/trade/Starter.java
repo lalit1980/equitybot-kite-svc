@@ -54,15 +54,4 @@ public class Starter {
 				.apiInfo(new ApiInfoBuilder().version("1.0").title("Initiate Process API").description("Documentation  Initiate Process API v1.0").build());
 	}
 	
-	@Bean
-	public Docket swaggerTickApi10() {
-		return new Docket(DocumentationType.SWAGGER_2)
-				.groupName("tick-api-1.0")
-				.select()
-					.apis(RequestHandlerSelectors.basePackage("com.equitybot.trade.ws.controller.tick"))
-					.paths(regex("/api/tick/v1.0.*"))
-				.build()
-				.apiInfo(new ApiInfoBuilder().version("1.0").title("Tick API").description("Documentation  Tick API v1.0").build());
-	}
-	
 }
