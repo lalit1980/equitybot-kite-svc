@@ -8,14 +8,18 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.UUID;
 
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
-import com.equitybot.trade.db.mongodb.tick.domain.Tick;
+import com.zerodhatech.models.Depth;
 import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Instrument;
+import com.zerodhatech.models.Tick;
 
 
 public class DateFormatUtil {
@@ -91,7 +95,64 @@ public class DateFormatUtil {
 					tick.setLastTradedPrice(historicalData2.close);
 					tick.setLastTradedQuantity(historicalData2.volume);
 					tick.setInstrumentToken(instrumentToken);
-					tickList.add(tick);
+				    Map<String, ArrayList<Depth>> depth=new HashMap<String, ArrayList<Depth>>();
+				    ArrayList<Depth> depthList1=new ArrayList<Depth>();
+				    
+				    Depth obj1=new Depth();
+				    obj1.setOrders(40);
+				    obj1.setPrice(212.12);
+				    obj1.setQuantity(100);
+				    depthList1.add(obj1);
+				    
+				    Depth obj2=new Depth();
+				    obj2.setOrders(40);
+				    obj2.setPrice(218.12);
+				    obj2.setQuantity(200);
+				    depthList1.add(obj2);
+				    
+				    Depth obj3=new Depth();
+				    obj3.setOrders(40);
+				    obj3.setPrice(214.12);
+				    obj3.setQuantity(300);
+				    depthList1.add(obj3);
+				    
+				    Depth obj4=new Depth();
+				    obj4.setOrders(40);
+				    obj4.setPrice(290.12);
+				    obj4.setQuantity(400);
+				    
+				    depthList1.add(obj4);
+				    depth.put("Buy", depthList1);
+				    
+				    List<Depth> depthList2=new ArrayList<Depth>();
+					
+				    Depth obj5=new Depth();
+				    obj5.setOrders(30);
+				    obj5.setPrice(3432.12);
+				    obj5.setQuantity(4400);
+				    depthList2.add(obj5);
+				    
+				    Depth obj6=new Depth();
+				    obj6.setOrders(40);
+				    obj6.setPrice(34.12);
+				    obj6.setQuantity(200);
+				    depthList2.add(obj6);
+				    
+				    Depth obj7=new Depth();
+				    obj7.setOrders(50);
+				    obj7.setPrice(324.12);
+				    obj7.setQuantity(4500);
+				    depthList2.add(obj7);
+				    
+				    Depth obj8=new Depth();
+				    obj8.setOrders(60);
+				    obj8.setPrice(53.12);
+				    obj8.setQuantity(453);
+				    
+				    depthList2.add(obj8);
+				    depth.put("Sell", depthList1);
+				    tick.setMarketDepth(depth);
+				    tickList.add(tick);
 					
 				}
 		}

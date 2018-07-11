@@ -1,14 +1,11 @@
 package com.equitybot.trade.ws.service.kite;
 
 import java.io.IOException;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -29,7 +26,6 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
-import com.equitybot.trade.db.mongodb.tick.repository.TickRepository;
 import com.equitybot.trade.util.DateFormatUtil;
 import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocketException;
@@ -76,12 +72,8 @@ public class TradePortZerodhaConnect {
 
 	@Autowired
 	PropertyRepository propertyRepository;
-	@Autowired
-	TickRepository tickRepository;
-
+	
 	private List<KiteConnect> kiteSessionList = new ArrayList<KiteConnect>();
-
-	private TreeMap<ZonedDateTime, com.equitybot.trade.db.mongodb.tick.domain.Tick> tickMap = new TreeMap<ZonedDateTime, com.equitybot.trade.db.mongodb.tick.domain.Tick>();
 
 	private ArrayList<Tick> instrunentTicksData = new ArrayList<Tick>();
 
@@ -393,7 +385,7 @@ public class TradePortZerodhaConnect {
 		LOGGER.info("" + kiteConnect.getLTP(instruments).get("256265").lastPrice);
 	}
 	/** Get historical data for an instrument. */
-	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> getHistoricalData(KiteConnect kiteConnect,
+	public ArrayList<List<Tick>> getHistoricalData(KiteConnect kiteConnect,
 			ArrayList<Long> InstrumentToken, Date fromDate, Date toDate, String interval, boolean flag)
 			throws KiteException, IOException {
 		/**
@@ -401,7 +393,7 @@ public class TradePortZerodhaConnect {
 		 * interval, continuous (for expired F&O contracts) returns historical data
 		 * object which will have list of historical data inside the object.
 		 */
-		ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> tickList = new ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>>();
+		ArrayList<List<Tick>> tickList = new ArrayList<List<Tick>>();
 
 		for (Iterator<Long> iterator = InstrumentToken.iterator(); iterator.hasNext();) {
 			Long instrumentToken = iterator.next();
@@ -531,8 +523,7 @@ public class TradePortZerodhaConnect {
 			public void onTicks(ArrayList<Tick> ticks) {
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
 					for (int i = 0; i < ticks.size(); i++) {
-						com.equitybot.trade.db.mongodb.tick.domain.Tick tick = convertTickModel(ticks.get(i));
-						String newJson = new Gson().toJson(tick);
+						String newJson = new Gson().toJson(ticks.get(i));
 						LOGGER.info("" + newJson);
 						kafkaTemplate.send(tickProducerTopic, newJson);
 					}
@@ -548,31 +539,6 @@ public class TradePortZerodhaConnect {
 		boolean isConnected = tickerProvider.isConnectionOpen();
 		LOGGER.info("" + isConnected);
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
-	}
-
-	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(Tick tick) {
-		com.equitybot.trade.db.mongodb.tick.domain.Tick tickModel = new com.equitybot.trade.db.mongodb.tick.domain.Tick();
-		tickModel.setAverageTradePrice(tick.getAverageTradePrice());
-		tickModel.setChange(tick.getChange());
-		tickModel.setClosePrice(tick.getClosePrice());
-		tickModel.setHighPrice(tick.getHighPrice());
-		tickModel.setId(UUID.randomUUID().toString());
-		tickModel.setInstrumentToken(tick.getInstrumentToken());
-		tickModel.setLastTradedPrice(tick.getLastTradedPrice());
-		tickModel.setLastTradedQuantity(tick.getLastTradedQuantity());
-		tickModel.setLastTradedTime(tick.getLastTradedTime());
-		tickModel.setLowPrice(tick.getLowPrice());
-		tickModel.setMode(tick.getMode());
-		tickModel.setOi(tick.getOi());
-		tickModel.setOiDayHigh(tick.getOpenInterestDayHigh());
-		tickModel.setOiDayLow(tick.getOpenInterestDayLow());
-		tickModel.setOpenPrice(tick.getOpenPrice());
-		tickModel.setTickTimestamp(tick.getTickTimestamp());
-		tickModel.setTotalBuyQuantity(tick.getTotalBuyQuantity());
-		tickModel.setTotalSellQuantity(tick.getTotalSellQuantity());
-		tickModel.setTradable(tick.isTradable());
-		tickModel.setVolumeTradedToday(tick.getVolumeTradedToday());
-		return tickModel;
 	}
 
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
@@ -621,14 +587,6 @@ public class TradePortZerodhaConnect {
 		this.instrunentTicksData = instrunentTicksData;
 	}
 
-	public TreeMap<ZonedDateTime, com.equitybot.trade.db.mongodb.tick.domain.Tick> getTickMap() {
-		return tickMap;
-	}
-
-	public void setTickMap(TreeMap<ZonedDateTime, com.equitybot.trade.db.mongodb.tick.domain.Tick> tickMap) {
-		this.tickMap = tickMap;
-	}
-
 	public List<KiteConnect> getKiteSessionList() {
 		return kiteSessionList;
 	}
@@ -637,20 +595,18 @@ public class TradePortZerodhaConnect {
 		this.kiteSessionList = kiteSessionList;
 	}
 
-	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> startBackTesting(KiteConnect kiteconnect, ArrayList<Long> instrumentTokens, Date fromDate, Date toDate,
+	public ArrayList<List<Tick>> startBackTesting(KiteConnect kiteconnect, ArrayList<Long> instrumentTokens, Date fromDate, Date toDate,
 			String interval, boolean continuous) throws IOException, KiteException {
-		ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> tickList = getHistoricalData(kiteconnect,
+		ArrayList<List<Tick>> tickList = getHistoricalData(kiteconnect,
 				instrumentTokens, fromDate, toDate, interval, continuous);
 		if (tickList != null && tickList.size() > 0) {
 			for (int i = 0; i < tickList.size(); i++) {
 				if (tickList.get(i) != null && tickList.get(i).size() > 0) {
-					List<com.equitybot.trade.db.mongodb.tick.domain.Tick> list=tickList.get(i);
+					List<Tick> list=tickList.get(i);
 					for (int j = 0; j < list.size(); j++) {
 						try {
-							com.equitybot.trade.db.mongodb.tick.domain.Tick tick=list.get(j);
-							tick.setBackTestFlag(true);
+							Tick tick=list.get(j);
 							Thread.sleep(300);
-							tick.setId( UUID.randomUUID().toString());
 							String newJson = new Gson().toJson(tick);
 							LOGGER.info("Instrument Token "+ tick.getInstrumentToken()+" Cache last traded price: "+ cacheLastTradedPrice.get(tick.getInstrumentToken()));
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,

@@ -19,6 +19,7 @@ import com.equitybot.trade.ws.service.kite.TradePortZerodhaConnect;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
+import com.zerodhatech.models.Tick;
 
 @RestController
 @RequestMapping("/api")
@@ -37,7 +38,7 @@ public class InitiateKiteController {
 	}
 
 	@PostMapping("/process/v1.0/{userId}/{requestToken}/{fromDate}/{toDate}/{instrumentToken}/{interval}/{continuous}")
-	public ArrayList<List<com.equitybot.trade.db.mongodb.tick.domain.Tick>> getHistoricalData(@PathVariable("userId") String userId,
+	public ArrayList<List<Tick>> getHistoricalData(@PathVariable("userId") String userId,
 			@PathVariable("requestToken") String requestToken,
 			@PathVariable("fromDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date fromDate,
 			@PathVariable("toDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
