@@ -70,8 +70,8 @@ public class TradePortZerodhaConnect {
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 	
-	private IgniteCache<Long, Double> cacheLastTradedPrice;
-	private IgniteCache<Long, OrderParams> cacheOrderParams;
+	private IgniteCache<Long, Double> tickCache;
+	//private IgniteCache<Long, OrderParams> cacheOrderParams;
 
 	@Autowired
 	PropertyRepository propertyRepository;
@@ -87,24 +87,13 @@ public class TradePortZerodhaConnect {
 		Profile profile = kiteConnect.getProfile();
 		LOGGER.info(profile.userName);
 	}
-	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
-		return cacheLastTradedPrice;
-	}
-
-	public void setCacheLastTradedPrice(IgniteCache<Long, Double> cacheLastTradedPrice) {
-		this.cacheLastTradedPrice = cacheLastTradedPrice;
-	}
+	
 	public TradePortZerodhaConnect() {
 		IgniteConfiguration cfg = new IgniteConfiguration();
 		Ignite ignite = Ignition.start(cfg);
 		Ignition.setClientMode(true);
-		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
-		this.cacheLastTradedPrice = ignite.getOrCreateCache(ccfg);
-		
-		CacheConfiguration<Long, OrderParams> ccfgOrderParams = new CacheConfiguration<Long, OrderParams>("CachedOrderParams");
-		this.cacheOrderParams = ignite.getOrCreateCache(ccfgOrderParams);
-		
-		
+		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("TickCache");
+		this.tickCache = ignite.getOrCreateCache(ccfg);
 	}
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteConnect) throws KiteException, IOException {
@@ -618,7 +607,6 @@ public class TradePortZerodhaConnect {
 							Tick tick=list.get(j);
 							Thread.sleep(300);
 							String newJson = new Gson().toJson(tick);
-							LOGGER.info("Instrument Token "+ tick.getInstrumentToken()+" Cache last traded price: "+ cacheLastTradedPrice.get(tick.getInstrumentToken()));
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
@@ -639,10 +627,13 @@ public class TradePortZerodhaConnect {
 		}
 		return tickList;
 	}
-	public IgniteCache<Long, OrderParams> getCacheOrderParams() {
-		return cacheOrderParams;
+	
+
+	public IgniteCache<Long, Double> getTickCache() {
+		return tickCache;
 	}
-	public void setCacheOrderParams(IgniteCache<Long, OrderParams> cacheOrderParams) {
-		this.cacheOrderParams = cacheOrderParams;
+
+	public void setTickCache(IgniteCache<Long, Double> tickCache) {
+		this.tickCache = tickCache;
 	}
 }
