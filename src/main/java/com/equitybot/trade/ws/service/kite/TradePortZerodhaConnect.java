@@ -70,8 +70,9 @@ public class TradePortZerodhaConnect {
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 	
-	private IgniteCache<Long, Double> tickCache;
-	//private IgniteCache<Long, OrderParams> cacheOrderParams;
+	private IgniteCache<Long, Double> cacheLastTradedPrice;
+	private IgniteCache<Long, OrderParams> cacheOrderParams;
+	private IgniteCache<Long, Tick> cacheLatestTick;
 
 	@Autowired
 	PropertyRepository propertyRepository;
@@ -87,13 +88,27 @@ public class TradePortZerodhaConnect {
 		Profile profile = kiteConnect.getProfile();
 		LOGGER.info(profile.userName);
 	}
-	
+	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
+		return cacheLastTradedPrice;
+	}
+
+	public void setCacheLastTradedPrice(IgniteCache<Long, Double> cacheLastTradedPrice) {
+		this.cacheLastTradedPrice = cacheLastTradedPrice;
+	}
 	public TradePortZerodhaConnect() {
 		IgniteConfiguration cfg = new IgniteConfiguration();
 		Ignite ignite = Ignition.start(cfg);
 		Ignition.setClientMode(true);
-		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("TickCache");
-		this.tickCache = ignite.getOrCreateCache(ccfg);
+		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		this.cacheLastTradedPrice = ignite.getOrCreateCache(ccfg);
+		
+		CacheConfiguration<Long, OrderParams> ccfgOrderParams = new CacheConfiguration<Long, OrderParams>("CachedOrderParams");
+		this.cacheOrderParams = ignite.getOrCreateCache(ccfgOrderParams);
+		
+		CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<Long, Tick>("CachedLatestTick");
+		this.cacheLatestTick = ignite.getOrCreateCache(ccfgLatestTickParams);
+		
+		
 	}
 	/** Gets Margin. */
 	public void getMargins(KiteConnect kiteConnect) throws KiteException, IOException {
@@ -143,13 +158,14 @@ public class TradePortZerodhaConnect {
 	}
 
 	/** Place bracket order. */
-	public void placeBracketOrder(KiteConnect kiteConnect) throws KiteException, IOException {
+	public void placeBracketOrder(NormalTradeOrderRequest tradeRequest) throws KiteException, IOException {
 		/**
 		 * Bracket order:- following is example param for bracket order*
 		 * trailing_stoploss and stoploss_value are points and not tick or price
 		 */
+		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = 1;
+		orderParams.quantity = tradeRequest.getQuantity();
 		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
 		orderParams.price = 30.5;
 		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
@@ -524,6 +540,10 @@ public class TradePortZerodhaConnect {
 					for (int i = 0; i < ticks.size(); i++) {
 						String newJson = new Gson().toJson(ticks.get(i));
 						LOGGER.info("" + newJson);
+						if(cacheLatestTick!=null) {
+							cacheLatestTick.put(ticks.get(i).getInstrumentToken(), ticks.get(i));
+							LOGGER.info("Cached Tick Instument Token: "+ cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getLastTradedPrice());
+						}
 						kafkaTemplate.send(tickProducerTopic, newJson);
 					}
 				} else {
@@ -607,6 +627,10 @@ public class TradePortZerodhaConnect {
 							Tick tick=list.get(j);
 							Thread.sleep(300);
 							String newJson = new Gson().toJson(tick);
+							if(this.cacheLatestTick!=null) {
+								this.cacheLatestTick.put(tick.getInstrumentToken(), tick);
+								LOGGER.info("Back Test Cached Tick Instument Token: "+ cacheLatestTick.get(tick.getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(tick.getInstrumentToken()).getLastTradedPrice());
+							}
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
@@ -627,13 +651,16 @@ public class TradePortZerodhaConnect {
 		}
 		return tickList;
 	}
-	
-
-	public IgniteCache<Long, Double> getTickCache() {
-		return tickCache;
+	public IgniteCache<Long, OrderParams> getCacheOrderParams() {
+		return cacheOrderParams;
 	}
-
-	public void setTickCache(IgniteCache<Long, Double> tickCache) {
-		this.tickCache = tickCache;
+	public void setCacheOrderParams(IgniteCache<Long, OrderParams> cacheOrderParams) {
+		this.cacheOrderParams = cacheOrderParams;
+	}
+	public IgniteCache<Long, Tick> getCacheLatestTick() {
+		return cacheLatestTick;
+	}
+	public void setCacheLatestTick(IgniteCache<Long, Tick> cacheLatestTick) {
+		this.cacheLatestTick = cacheLatestTick;
 	}
 }
