@@ -32,19 +32,18 @@ public class InitiateKiteController {
 	public void getKiteConnectSession(@PathVariable("userId") String userId,
 			@PathVariable("requestToken") String requestToken) {
 		try {
-			tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
+			tradePortZerodhaConnect.getKiteConnectSession(userId);
 		} catch (JSONException | IOException | KiteException e) {
 		}
 	}
 
 	@PostMapping("/process/v1.0/{userId}/{requestToken}/{fromDate}/{toDate}/{instrumentToken}/{interval}/{continuous}")
 	public ArrayList<List<Tick>> getHistoricalData(@PathVariable("userId") String userId,
-			@PathVariable("requestToken") String requestToken,
 			@PathVariable("fromDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date fromDate,
 			@PathVariable("toDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
 			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) {
 		try {
-			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
+			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId);
 			return tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, fromDate, toDate, interval, false);
 		} catch (JSONException | IOException | KiteException e) {
 			return null;
@@ -58,7 +57,7 @@ public class InitiateKiteController {
 			@RequestBody ArrayList<Long> instrumentTokens) {
 
 		try {
-			tradePortZerodhaConnect.tickerUsage(tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken),
+			tradePortZerodhaConnect.tickerUsage(tradePortZerodhaConnect.getKiteConnectSession(userId),
 					instrumentTokens);
 		} catch (IOException | WebSocketException | KiteException e) {
 			e.printStackTrace();

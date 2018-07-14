@@ -138,7 +138,7 @@ public class TradePortZerodhaConnect {
 		 * order has been placed successfully, not order execution.
 		 */
 
-		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId());
 		OrderParams orderParams = new OrderParams();
 		orderParams.quantity = tradeRequest.getQuantity();
 		orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
@@ -165,7 +165,7 @@ public class TradePortZerodhaConnect {
 		 * Bracket order:- following is example param for bracket order*
 		 * trailing_stoploss and stoploss_value are points and not tick or price
 		 */
-		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId());
 		OrderParams orderParams = new OrderParams();
 		orderParams.quantity = tradeRequest.getQuantity();
 		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
@@ -603,14 +603,14 @@ public class TradePortZerodhaConnect {
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
 
-	public KiteConnect getKiteConnectSession(String userId, String requestToken)
+	public KiteConnect getKiteConnectSession(String userId)
 			throws JSONException, IOException, KiteException {
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
-		if (kitePropertyList != null) {
+		/*if (kitePropertyList != null) {
 			kitePropertyList.setRequestToken(requestToken);
 			propertyRepository.save(kitePropertyList);
-		}
+		}*/
 		if (kiteSessionList != null && kiteSessionList.size() > 0) {
 			kiteConnect = kiteSessionList.stream().filter(x -> userId.equals(x.getUserId())).findFirst().orElse(null);
 		} else {
@@ -625,6 +625,7 @@ public class TradePortZerodhaConnect {
 					LOGGER.info("session expired");
 				}
 			});
+			LOGGER.info("Request Token: "+kiteProperty.getRequestToken()+" Api Secret: "+kiteProperty.getApiSecret());
 			User user = kiteConnect.generateSession(kiteProperty.getRequestToken(), kiteProperty.getApiSecret());
 			kiteConnect.setAccessToken(user.accessToken);
 			kiteConnect.setPublicToken(user.publicToken);

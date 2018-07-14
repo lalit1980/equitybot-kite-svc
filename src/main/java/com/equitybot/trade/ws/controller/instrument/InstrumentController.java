@@ -103,20 +103,19 @@ public class InstrumentController {
 		List<InstrumentModel> list = null;
 		try {
 			list = DateFormatUtil.convertInstrumentModel(
-					tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken).getInstruments(exchange));
+					tradePortZerodhaConnect.getKiteConnectSession(userId).getInstruments(exchange));
 		} catch (JSONException | IOException | KiteException e) {
 			e.printStackTrace();
 		}
 		return list;
 	}
 
-	@GetMapping("/instrument/v1.0/kite/v3.0/{userId}/{requestToken}")
-	public List<InstrumentModel> findAllInstrumentFromKite(@PathVariable("userId") String userId,
-			@PathVariable("requestToken") String requestToken) throws JSONException, IOException, KiteException {
+	@GetMapping("/instrument/v1.0/kite/v3.0/{userId}")
+	public List<InstrumentModel> findAllInstrumentFromKite(@PathVariable("userId") String userId) throws JSONException, IOException, KiteException {
 		List<InstrumentModel> list = null;
 		instrumentRepository.deleteAll();
 		list= DateFormatUtil.convertInstrumentModel(
-				tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken).getInstruments());
+				tradePortZerodhaConnect.getKiteConnectSession(userId).getInstruments());
 		for (InstrumentModel instrumentModel : list) {
 			instrumentRepository.save(instrumentModel);
 		}
