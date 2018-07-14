@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -36,6 +37,7 @@ import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.SessionExpiryHook;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.kiteconnect.utils.Constants;
+import com.zerodhatech.models.Depth;
 import com.zerodhatech.models.HistoricalData;
 import com.zerodhatech.models.Holding;
 import com.zerodhatech.models.Instrument;
@@ -167,7 +169,36 @@ public class TradePortZerodhaConnect {
 		OrderParams orderParams = new OrderParams();
 		orderParams.quantity = tradeRequest.getQuantity();
 		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
-		orderParams.price = 30.5;
+		Tick tick=cacheLatestTick.get(tradeRequest.getInstrumentToken());
+		Map<String, ArrayList<Depth>> depthMap=tick.getMarketDepth();
+		// int totalOrderQuantity=0;
+		
+		/*////
+		for (Entry<String, ArrayList<Depth>> entry : depthMap.entrySet()) {
+			if(tradeRequest.getOrderType().equalsIgnoreCase("Buy")) {
+				if(entry.getKey().equalsIgnoreCase("SELL")) {
+					List<Depth> depth=entry.getValue();
+					if(depth!=null && depth.size()>0) {
+						for (Iterator<Depth> iterator = depth.iterator(); iterator.hasNext();) {
+							Depth depth2 = (Depth) iterator.next();
+							totalOrderQuantity=totalOrderQuantity+depth2.getQuantity();
+							if(totalOrderQuantity>=tradeRequest.getQuantity()) {
+								price=depth2.getPrice();
+								break;
+							}
+						}
+						
+					}
+					
+				}
+			}
+			
+	        System.out.println(entry.getKey() + ":" + entry.getValue());
+	    }
+		*/////
+		double price = getBuyPriceFromDepth(depthMap, tradeRequest.getQuantity());
+
+		orderParams.price = price;
 		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
 		orderParams.tradingsymbol = "SOUTHBANK";
 		orderParams.trailingStoploss = 1.0;
@@ -178,6 +209,18 @@ public class TradePortZerodhaConnect {
 		orderParams.product = Constants.PRODUCT_MIS;
 		Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
 		LOGGER.info(order10.orderId);
+	}
+	
+	private double getBuyPriceFromDepth(Map<String, ArrayList<Depth>> depthMap, int totalOrderQuantity) {
+		List<Depth> depths = depthMap.get("sell");
+		int totalAvalableSellQuantity = 0;
+		for(Depth depth : depths ) {
+			totalAvalableSellQuantity = totalAvalableSellQuantity + depth.getQuantity();
+			if(totalOrderQuantity <= totalAvalableSellQuantity) {
+				return depth.getPrice();
+			}
+		}
+		return 0.0;
 	}
 
 	/** Place cover order. */

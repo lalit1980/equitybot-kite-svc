@@ -1,6 +1,5 @@
 package com.equitybot.trade.db.mongodb.property.repository;
 
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +46,15 @@ public class PropertyRepositoryImpl implements PropertyRespositoryCustom {
 		Update update = new Update();
 		update.set("secretQuestions", secretQuestions);
 		return mongoTemplate.updateFirst(query, update, KiteProperty.class);
+	}
+
+	@Override
+	public UpdateResult updatRequestTokenByUserId(String userId, String requestToken) {
+		Query query = new Query(Criteria.where("userId").is(userId));
+		Update update = new Update();
+		update.set("requestToken", requestToken);
+		return mongoTemplate.updateFirst(query, update, KiteProperty.class);
+		
 	}
 
 	

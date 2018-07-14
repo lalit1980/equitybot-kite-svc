@@ -20,6 +20,9 @@ public class NormalTradeOrderRequest {
 	private String validity;
 	private double price;
 	private double triggerPrice;
+	private double trailingStopLossPrice;
+	private double stopLossPrice;
+	private double targetPrice;
 	private String tag;
 	public long getInstrumentToken() {
 		return instrumentToken;
@@ -107,10 +110,29 @@ public class NormalTradeOrderRequest {
 	}
 	@Override
 	public String toString() {
-		return "NormalTradeOrderRequestBO [id=" + id + ", instrumentToken=" + instrumentToken + ", userId=" + userId
+		return "NormalTradeOrderRequest [id=" + id + ", instrumentToken=" + instrumentToken + ", userId=" + userId
 				+ ", requestToken=" + requestToken + ", quantity=" + quantity + ", orderType=" + orderType
 				+ ", tradingsymbol=" + tradingsymbol + ", product=" + product + ", exchange=" + exchange
 				+ ", transactionType=" + transactionType + ", validity=" + validity + ", price=" + price
-				+ ", triggerPrice=" + triggerPrice + ", tag=" + tag + "]";
+				+ ", triggerPrice=" + triggerPrice + ", trailingStopLossPrice=" + trailingStopLossPrice
+				+ ", stopLossPrice=" + stopLossPrice + ", targetPrice=" + targetPrice + ", tag=" + tag + "]";
+	}
+	public double getTrailingStopLossPrice() {
+		return trailingStopLossPrice;
+	}
+	public void setTrailingStopLossPrice(double trailingStopLossPrice) {
+		this.trailingStopLossPrice = trailingStopLossPrice;
+	}
+	public double getStopLossPrice() {
+		return stopLossPrice;
+	}
+	public void setStopLossPrice(double stopLossPrice) {
+		this.stopLossPrice = stopLossPrice;
+	}
+	public double getTargetPrice() {
+		return targetPrice;
+	}
+	public void setTargetPrice(double targetPrice) {
+		this.targetPrice = targetPrice;
 	}
 }

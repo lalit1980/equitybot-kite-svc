@@ -56,4 +56,14 @@ public class PropertyController {
 			@RequestBody Map<String,String> secretQuestions) {
 		return propertyRepository.updatePropertyByUserIdMapData(userId,secretQuestions);
 	}
+	@PutMapping("/property/v1.0/{userId}/{requestToken}/{updateType}")
+	public UpdateResult updateRequestTokenByUserID(@PathVariable("userId") String userId,
+			@PathVariable("requestToken") String requestToken,
+			@PathVariable("updateType") String updateType) {
+		if(updateType.equalsIgnoreCase("token")) {
+			return propertyRepository.updatRequestTokenByUserId(userId,requestToken);
+		}
+		return null;
+		
+	}
 }
