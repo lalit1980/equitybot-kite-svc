@@ -1,7 +1,7 @@
 package com.equitybot.trade.ws.controller.property;
 
 import java.util.List;
-
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,7 +24,7 @@ public class PropertyController {
 	@Autowired
 	PropertyRepository propertyRepository;
 	@GetMapping("/property/v1.0/{userId}")
-	public List<KiteProperty> findByUserId(@PathVariable("userId") String userId) {
+	public KiteProperty findByUserId(@PathVariable("userId") String userId) {
 		return propertyRepository.findByUserId(userId);
 	}
 
@@ -50,5 +50,10 @@ public class PropertyController {
 	public List<KiteProperty> findAll() {
 
 		return propertyRepository.findAll();
+	}
+	@PutMapping("/property/v1.0/{userId}/{secretQuestions}")
+	public UpdateResult updateUserSecretQuestions(@PathVariable("userId") String userId,
+			@RequestBody Map<String,String> secretQuestions) {
+		return propertyRepository.updatePropertyByUserIdMapData(userId,secretQuestions);
 	}
 }

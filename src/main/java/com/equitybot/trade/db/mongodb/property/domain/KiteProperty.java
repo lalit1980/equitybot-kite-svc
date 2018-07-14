@@ -1,5 +1,8 @@
 package com.equitybot.trade.db.mongodb.property.domain;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -30,6 +33,10 @@ public class KiteProperty {
 	private String access_token;
 
 	private String refresh_token;
+	
+	private String password;
+	
+	private Map<String, String> secretQuestions=new HashMap<String, String>();
 
 	public String getApiKey() {
 		return apiKey;
@@ -95,11 +102,29 @@ public class KiteProperty {
 		this.refresh_token = refresh_token;
 	}
 
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public Map<String, String> getSecretQuestions() {
+		return secretQuestions;
+	}
+
+	public void setSecretQuestions(Map<String, String> secretQuestions) {
+		this.secretQuestions = secretQuestions;
+	}
+
 	@Override
 	public String toString() {
 		return "KiteProperty [id=" + id + ", apiKey=" + apiKey + ", userId=" + userId + ", requestToken=" + requestToken
 				+ ", apiSecret=" + apiSecret + ", public_token=" + public_token + ", access_token=" + access_token
-				+ ", refresh_token=" + refresh_token + "]";
+				+ ", refresh_token=" + refresh_token + ", password=" + password + ", secretQuestions=" + secretQuestions
+				+ "]";
 	}
 
 }

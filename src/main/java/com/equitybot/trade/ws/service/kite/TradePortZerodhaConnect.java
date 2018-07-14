@@ -563,21 +563,15 @@ public class TradePortZerodhaConnect {
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
 		KiteConnect kiteConnect = null;
-		List<KiteProperty> kitePropertyList = propertyRepository.findByUserId(userId);
-		if (kitePropertyList != null && kitePropertyList.size() > 0) {
-			kitePropertyList.forEach(kiteProperty -> {
-				if (!(kiteProperty.getUserId().equalsIgnoreCase(userId)
-						&& kiteProperty.getRequestToken().equals(requestToken))) {
-					kiteProperty.setRequestToken(requestToken);
-					propertyRepository.save(kiteProperty);
-
-				}
-			});
+		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
+		if (kitePropertyList != null) {
+			kitePropertyList.setRequestToken(requestToken);
+			propertyRepository.save(kitePropertyList);
 		}
 		if (kiteSessionList != null && kiteSessionList.size() > 0) {
 			kiteConnect = kiteSessionList.stream().filter(x -> userId.equals(x.getUserId())).findFirst().orElse(null);
 		} else {
-			KiteProperty kiteProperty = propertyRepository.findByUserId(userId).get(0);
+			KiteProperty kiteProperty = propertyRepository.findByUserId(userId);
 			kiteConnect = new KiteConnect(kiteProperty.getApiKey());
 			kiteConnect.setUserId(kiteProperty.getUserId());
 			kiteConnect.setEnableLogging(true);

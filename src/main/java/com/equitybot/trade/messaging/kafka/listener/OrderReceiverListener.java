@@ -22,11 +22,6 @@ public class OrderReceiverListener {
 	@Value("${spring.kafka.producer.topic-kite-tradeorder}")
 	private String timeSeriesProducerTopic;
 
-	
-	
-	@Value("${tick.backTestFlag}")
-	private boolean backTestFlag;
-
 	@KafkaListener(id = "id0", topicPartitions = {
 			@TopicPartition(topic = "topic-kite-tradeorder", partitions = { "0" }) })
 	public void listenPartition0(ConsumerRecord<?, ?> record) throws IOException {
