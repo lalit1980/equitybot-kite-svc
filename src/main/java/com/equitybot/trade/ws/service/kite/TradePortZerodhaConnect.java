@@ -24,6 +24,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
+import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
+import com.equitybot.trade.db.mongodb.order.domain.NormalTradeOrderRequest;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.util.DateFormatUtil;
@@ -73,6 +76,9 @@ public class TradePortZerodhaConnect {
 	@Autowired
 	PropertyRepository propertyRepository;
 	
+	@Autowired
+	InstrumentRepository instrumentRepository;
+	
 	private List<KiteConnect> kiteSessionList = new ArrayList<KiteConnect>();
 
 	private ArrayList<Tick> instrunentTicksData = new ArrayList<Tick>();
@@ -112,7 +118,7 @@ public class TradePortZerodhaConnect {
 	}
 
 	/** Place order. */
-	public void placeOrder(KiteConnect kiteConnect) throws KiteException, IOException {
+	public void placeOrder(NormalTradeOrderRequest tradeRequest) throws KiteException, IOException {
 		/**
 		 * Place order method requires a orderParams argument which contains,
 		 * tradingsymbol, exchange, transaction_type, order_type, quantity, product,
@@ -126,19 +132,23 @@ public class TradePortZerodhaConnect {
 		 * order has been placed successfully, not order execution.
 		 */
 
+		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = 1;
-		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
-		orderParams.tradingsymbol = "ASHOKLEY";
-		orderParams.product = Constants.PRODUCT_CNC;
-		orderParams.exchange = Constants.EXCHANGE_NSE;
-		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.validity = Constants.VALIDITY_DAY;
-		orderParams.price = 122.2;
-		orderParams.triggerPrice = 0.0;
-		orderParams.tag = "myTag"; // tag is optional and it cannot be more than 8 characters and only alphanumeric
-									// is allowed
-
+		orderParams.quantity = tradeRequest.getQuantity();
+		orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
+		List<InstrumentModel> instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+		orderParams.tradingsymbol = instrumentList.get(0).getTradingSymbol();
+		orderParams.product = tradeRequest.getProduct().toUpperCase();
+		orderParams.exchange = instrumentList.get(0).getExchange().toUpperCase();
+		orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+		orderParams.validity = tradeRequest.getValidity().toUpperCase();
+		if(tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_LIMIT) || 
+				tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_SL) ||
+				tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_SLM)) {
+			orderParams.price=tradeRequest.getPrice();
+			orderParams.triggerPrice = tradeRequest.getTriggerPrice();
+		}
+		orderParams.tag = tradeRequest.getTag();
 		Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 		LOGGER.info(order.orderId);
 	}

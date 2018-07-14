@@ -1,11 +1,17 @@
-package com.equitybot.trade.bo;
+package com.equitybot.trade.db.mongodb.order.domain;
 
-public class NormalTradeOrderRequestBO {
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
+@Document(collection = "NormalTradeOrderRequest")
+public class NormalTradeOrderRequest {
+
+	private String id;
+	@Indexed(unique = true)
 	private long instrumentToken;
 	private String userId;
 	private String requestToken;
-	private long quantity;
+	private int quantity;
 	private String orderType;
 	private String tradingsymbol;
 	private String product;
@@ -33,10 +39,10 @@ public class NormalTradeOrderRequestBO {
 	public void setRequestToken(String requestToken) {
 		this.requestToken = requestToken;
 	}
-	public long getQuantity() {
+	public int getQuantity() {
 		return quantity;
 	}
-	public void setQuantity(long quantity) {
+	public void setQuantity(int quantity) {
 		this.quantity = quantity;
 	}
 	public String getOrderType() {
@@ -93,13 +99,18 @@ public class NormalTradeOrderRequestBO {
 	public void setTag(String tag) {
 		this.tag = tag;
 	}
+	public String getId() {
+		return id;
+	}
+	public void setId(String id) {
+		this.id = id;
+	}
 	@Override
 	public String toString() {
-		return "NormalTradeOrderRequestBO [instrumentToken=" + instrumentToken + ", userId=" + userId
+		return "NormalTradeOrderRequestBO [id=" + id + ", instrumentToken=" + instrumentToken + ", userId=" + userId
 				+ ", requestToken=" + requestToken + ", quantity=" + quantity + ", orderType=" + orderType
 				+ ", tradingsymbol=" + tradingsymbol + ", product=" + product + ", exchange=" + exchange
 				+ ", transactionType=" + transactionType + ", validity=" + validity + ", price=" + price
 				+ ", triggerPrice=" + triggerPrice + ", tag=" + tag + "]";
 	}
-	
 }
