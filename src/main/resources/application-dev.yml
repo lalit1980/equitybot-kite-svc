@@ -22,7 +22,7 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       topic-kite-tick: topic-kite-tick
-      topic-kite-tradeorder: topic-kite-tradeorder
+      topic-kite-tradeorder-tick: topic-kite-tradeorder
       
   profiles: dev
   

@@ -14,30 +14,18 @@ public class KiteProperty {
 
 	@SuppressWarnings("unused")
 	private static final long serialVersionUID = 7040460629552792649L;
-
 	@Id
-   // @Indexed(unique = true)
 	private String id;
-
 	private String apiKey;
-
 	@Indexed(unique = true)
 	private String userId;
-
 	private String requestToken;
-
 	private String apiSecret;
-
 	private String public_token;
-
 	private String access_token;
-
 	private String refresh_token;
-	
 	private String password;
-	
 	private Map<String, String> secretQuestions=new HashMap<String, String>();
-
 	public String getApiKey() {
 		return apiKey;
 	}

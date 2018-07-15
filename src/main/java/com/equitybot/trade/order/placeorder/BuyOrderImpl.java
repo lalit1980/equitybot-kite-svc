@@ -20,7 +20,8 @@ public class BuyOrderImpl implements IBuyOrder {
 	public OrderResponseDTO buyOrder(OrderRequestDTO tradeOrderRequestDTO) {
 		Order order = tradePortConnect.placeOrder(tradeOrderRequestDTO);
 		OrderResponseDTO response=TradeDataConverter.convertToOrderDTO(order, tradeOrderRequestDTO.getInstrumentToken());
-		logger.info("Place Order Response: "+response.toString());
+		response.setOrderId(order.orderId);
+		logger.info("Placed Buy Order Response: "+response.toString());
 		return response;
 	}
 

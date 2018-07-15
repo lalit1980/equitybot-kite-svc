@@ -29,6 +29,7 @@ import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository
 import com.equitybot.trade.db.mongodb.order.dto.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
+import com.equitybot.trade.ignite.configs.IgniteConfig;
 import com.equitybot.trade.util.DateFormatUtil;
 import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocketException;
@@ -72,9 +73,12 @@ public class KiteConnectService {
 	private KafkaTemplate<String, String> kafkaTemplate;
 	
 	private IgniteCache<Long, Double> cacheLastTradedPrice;
-	private IgniteCache<Long, OrderParams> cacheOrderParams;
+	private IgniteCache<Long, String> cacheTradeOrder;
 	private IgniteCache<Long, Tick> cacheLatestTick;
 
+	@Autowired
+	IgniteConfig igniteConfig;
+	
 	@Autowired
 	PropertyRepository propertyRepository;
 	
@@ -97,17 +101,15 @@ public class KiteConnectService {
 		this.cacheLastTradedPrice = cacheLastTradedPrice;
 	}
 	public KiteConnectService() {
-		IgniteConfiguration cfg = new IgniteConfiguration();
-		Ignite ignite = Ignition.start(cfg);
-		Ignition.setClientMode(true);
-		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
-		this.cacheLastTradedPrice = ignite.getOrCreateCache(ccfg);
 		
-		CacheConfiguration<Long, OrderParams> ccfgOrderParams = new CacheConfiguration<Long, OrderParams>("CachedOrderParams");
-		this.cacheOrderParams = ignite.getOrCreateCache(ccfgOrderParams);
+		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		this.cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfg);
+		
+		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
+		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
 		
 		CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<Long, Tick>("CachedLatestTick");
-		this.cacheLatestTick = ignite.getOrCreateCache(ccfgLatestTickParams);
+		this.cacheLatestTick = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
 		
 		
 	}
@@ -136,6 +138,9 @@ public class KiteConnectService {
 		 * KiteException will have error message in it Success of this call implies only
 		 * order has been placed successfully, not order execution.
 		 */
+		
+		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite$$$$$$$$$$$ "+tradeRequest.toString());
+		
 		boolean statusFlag=false;
 		int ctr=0;
 		while (!statusFlag) {
@@ -143,20 +148,25 @@ public class KiteConnectService {
 			KiteConnect kiteConnect;
 			try {
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
-				OrderParams orderParams = new OrderParams();
-				orderParams.quantity = tradeRequest.getQuantity();
-				orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
-				InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+		        OrderParams orderParams = new OrderParams();
+		        orderParams.quantity = tradeRequest.getQuantity();
+		        orderParams.orderType = Constants.ORDER_TYPE_MARKET;
+		        InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
 				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
-				orderParams.product = tradeRequest.getProduct().toUpperCase();
-				orderParams.exchange = instrumentList.getExchange().toUpperCase();
-				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-				orderParams.validity = tradeRequest.getValidity().toUpperCase();
-				orderParams.price=tradeRequest.getPrice();
-				orderParams.triggerPrice = tradeRequest.getTriggerPrice();
-				orderParams.tag = tradeRequest.getTag();
-				Order order = kiteConnect.placeOrder(orderParams, tradeRequest.getVariety().toLowerCase());
-				LOGGER.info(order.orderId);
+		        orderParams.product = Constants.PRODUCT_MIS;
+		        orderParams.exchange = Constants.EXCHANGE_NSE;
+		        orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+		        orderParams.validity = Constants.VALIDITY_DAY;
+		        orderParams.tag = tradeRequest.getTag(); //tag is optional and it cannot be more than 8 characters and only alphanumeric is allowed
+		        Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+		        if( tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && order.orderId!=null) {
+		        	this.getCacheTradeOrder().put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+		        }else if( tradeRequest.getTransactionType().equalsIgnoreCase("Sell") && order.orderId!=null) {
+		        	if(this.getCacheTradeOrder().containsKey(tradeRequest.getInstrumentToken())) {
+		        		this.getCacheTradeOrder().remove(tradeRequest.getInstrumentToken());
+		        	}
+		        }
+		        LOGGER.info(order.orderId);
 				statusFlag=true;
 				return order;
 			} catch (JSONException | IOException | KiteException e) {
@@ -164,13 +174,10 @@ public class KiteConnectService {
 				// Invoke Naresh Ji's Service Ji
 				if(ctr>3) {
 					// TODO Implementation need to be done here throw custom exception
-					
 				}
 				ctr++;
 				e.printStackTrace();
 			}
-			
-			
 		}
 		return null;
 		
@@ -186,27 +193,34 @@ public class KiteConnectService {
 			KiteConnect kiteConnect;
 			try {
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
-				
 				OrderParams orderParams = new OrderParams();
-				orderParams.quantity = tradeRequest.getQuantity();
-				orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
-				InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+		        orderParams.quantity = tradeRequest.getQuantity();
+		        orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
+		        orderParams.price = tradeRequest.getPrice();
+		        orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+		        InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
 				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
-				orderParams.product = tradeRequest.getProduct();
-				orderParams.exchange = instrumentList.getExchange().toUpperCase();
-				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-				orderParams.validity = tradeRequest.getValidity().toUpperCase();
-				orderParams.price = tradeRequest.getPrice();
-
-				Order order = kiteConnect.modifyOrder(tradeRequest.getOrderId(), orderParams, tradeRequest.getValidity().toLowerCase());
-				LOGGER.info("Modified Order ID: ");
-				return order;
+		        orderParams.trailingStoploss = tradeRequest.getTrailingStopLossPrice();
+		        orderParams.stoploss = tradeRequest.getStopLossPrice();
+		        orderParams.exchange = Constants.EXCHANGE_NSE;
+		        orderParams.validity = Constants.VALIDITY_DAY;
+		        orderParams.squareoff = tradeRequest.getTargetPrice();
+		        orderParams.product = Constants.PRODUCT_MIS;
+		        Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
+		        LOGGER.info(order10.orderId);
+		        if( tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && order10.orderId!=null) {
+		        	this.getCacheTradeOrder().put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+		        }else if( tradeRequest.getTransactionType().equalsIgnoreCase("Sell") && order10.orderId!=null) {
+		        	if(this.getCacheTradeOrder().containsKey(tradeRequest.getInstrumentToken())) {
+		        		this.getCacheTradeOrder().remove(tradeRequest.getInstrumentToken());
+		        	}
+		        }
+				return order10;
 			} catch (JSONException | IOException | KiteException e) {
 				// TODO Auto-generated catch block
 				// Invoke Naresh Ji's Service Ji
 				if(ctr>3) {
 					// TODO Implementation need to be done here throw custom exception
-					
 				}
 				ctr++;
 				e.printStackTrace();
@@ -693,13 +707,13 @@ public class KiteConnectService {
 							String newJson = new Gson().toJson(tick);
 							if(this.cacheLatestTick!=null) {
 								this.cacheLatestTick.put(tick.getInstrumentToken(), tick);
-								LOGGER.info("Back Test Cached Tick Instument Token: "+ cacheLatestTick.get(tick.getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(tick.getInstrumentToken()).getLastTradedPrice());
+								//LOGGER.info("Back Test Cached Tick Instument Token: "+ cacheLatestTick.get(tick.getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(tick.getInstrumentToken()).getLastTradedPrice());
 							}
 							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
 							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 								@Override
 								public void onSuccess(SendResult<String, String> result) {
-									LOGGER.info("Sent message: " + result);
+									//LOGGER.info("Sent message: " + result);
 								}
 								@Override
 								public void onFailure(Throwable ex) {
@@ -715,16 +729,17 @@ public class KiteConnectService {
 		}
 		return tickList;
 	}
-	public IgniteCache<Long, OrderParams> getCacheOrderParams() {
-		return cacheOrderParams;
-	}
-	public void setCacheOrderParams(IgniteCache<Long, OrderParams> cacheOrderParams) {
-		this.cacheOrderParams = cacheOrderParams;
-	}
+	
 	public IgniteCache<Long, Tick> getCacheLatestTick() {
 		return cacheLatestTick;
 	}
 	public void setCacheLatestTick(IgniteCache<Long, Tick> cacheLatestTick) {
 		this.cacheLatestTick = cacheLatestTick;
+	}
+	public IgniteCache<Long, String> getCacheTradeOrder() {
+		return cacheTradeOrder;
+	}
+	public void setCacheTradeOrder(IgniteCache<Long, String> cacheTradeOrder) {
+		this.cacheTradeOrder = cacheTradeOrder;
 	}
 }
