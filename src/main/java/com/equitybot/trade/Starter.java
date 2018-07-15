@@ -40,7 +40,8 @@ public class Starter {
 					.apis(RequestHandlerSelectors.basePackage("com.equitybot.trade.ws.controller.instrument"))
 					.paths(regex("/api/instrument/v1.0.*"))
 				.build()
-				.apiInfo(new ApiInfoBuilder().version("1.0").title("Instrument API").description("Documentation Instrument Property API v1.0").build());
+				.apiInfo(new ApiInfoBuilder().version("1.0").title("Instrument API"
+						+ "").description("Documentation Instrument Property API v1.0").build());
 	}
 	
 	@Bean
@@ -52,6 +53,17 @@ public class Starter {
 					.paths(regex("/api/process/v1.0.*"))
 				.build()
 				.apiInfo(new ApiInfoBuilder().version("1.0").title("Initiate Process API").description("Documentation  Initiate Process API v1.0").build());
+	}
+	
+	@Bean
+	public Docket swaggerTradeOrderApi10() {
+		return new Docket(DocumentationType.SWAGGER_2)
+				.groupName("trade-order-api-1.0")
+				.select()
+					.apis(RequestHandlerSelectors.basePackage("com.equitybot.trade.ws.controller.order"))
+					.paths(regex("/api/tradeorder/v1.0.*"))
+				.build()
+				.apiInfo(new ApiInfoBuilder().version("1.0").title("Trade Order API").description("Documentation  Trade Order API v1.0").build());
 	}
 	
 }

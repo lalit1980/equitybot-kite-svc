@@ -1,4 +1,4 @@
-package com.equitybot.trade.order.sell;
+package com.equitybot.trade.order.orderservice;
 
 import java.util.ArrayList;
 import java.util.List;

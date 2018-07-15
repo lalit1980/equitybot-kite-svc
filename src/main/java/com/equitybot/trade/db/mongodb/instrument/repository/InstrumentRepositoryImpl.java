@@ -20,9 +20,13 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 	@Autowired
 	MongoOperations mongoTemplate;
 
-	public List<InstrumentModel> findByInstrumentToken(String instrumentToken) {
-		return mongoTemplate.find(new Query(Criteria.where("instrumentToken").is(Long.parseLong(instrumentToken))),
+	public InstrumentModel findByInstrumentToken(String instrumentToken) {
+		List<InstrumentModel> list=mongoTemplate.find(new Query(Criteria.where("instrumentToken").is(Long.parseLong(instrumentToken))),
 				InstrumentModel.class);
+		if(list!=null && list.size()>0) {
+			return list.get(0);
+		}
+		return null;
 	}
 
 	@Override

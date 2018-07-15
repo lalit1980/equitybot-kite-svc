@@ -1,13 +1,11 @@
-package com.equitybot.trade.db.mongodb.order.domain;
+package com.equitybot.trade.db.mongodb.order.dto;
 
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import java.io.Serializable;
 
-@Document(collection = "NormalTradeOrderRequest")
-public class NormalTradeOrderRequest {
+public class OrderRequestDTO implements Serializable{
 
 	private String id;
-	@Indexed(unique = true)
+	private String orderId;
 	private long instrumentToken;
 	private String userId;
 	private String requestToken;
@@ -24,6 +22,7 @@ public class NormalTradeOrderRequest {
 	private double stopLossPrice;
 	private double targetPrice;
 	private String tag;
+	private String variety;
 	public long getInstrumentToken() {
 		return instrumentToken;
 	}
@@ -110,12 +109,13 @@ public class NormalTradeOrderRequest {
 	}
 	@Override
 	public String toString() {
-		return "NormalTradeOrderRequest [id=" + id + ", instrumentToken=" + instrumentToken + ", userId=" + userId
-				+ ", requestToken=" + requestToken + ", quantity=" + quantity + ", orderType=" + orderType
-				+ ", tradingsymbol=" + tradingsymbol + ", product=" + product + ", exchange=" + exchange
+		return "OrderRequestDTO [id=" + id + ", orderId=" + orderId + ", instrumentToken=" + instrumentToken
+				+ ", userId=" + userId + ", requestToken=" + requestToken + ", quantity=" + quantity + ", orderType="
+				+ orderType + ", tradingsymbol=" + tradingsymbol + ", product=" + product + ", exchange=" + exchange
 				+ ", transactionType=" + transactionType + ", validity=" + validity + ", price=" + price
 				+ ", triggerPrice=" + triggerPrice + ", trailingStopLossPrice=" + trailingStopLossPrice
-				+ ", stopLossPrice=" + stopLossPrice + ", targetPrice=" + targetPrice + ", tag=" + tag + "]";
+				+ ", stopLossPrice=" + stopLossPrice + ", targetPrice=" + targetPrice + ", tag=" + tag + ", variety="
+				+ variety + "]";
 	}
 	public double getTrailingStopLossPrice() {
 		return trailingStopLossPrice;
@@ -134,5 +134,17 @@ public class NormalTradeOrderRequest {
 	}
 	public void setTargetPrice(double targetPrice) {
 		this.targetPrice = targetPrice;
+	}
+	public String getOrderId() {
+		return orderId;
+	}
+	public void setOrderId(String orderId) {
+		this.orderId = orderId;
+	}
+	public String getVariety() {
+		return variety;
+	}
+	public void setVariety(String variety) {
+		this.variety = variety;
 	}
 }

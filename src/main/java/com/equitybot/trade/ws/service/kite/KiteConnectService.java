@@ -6,7 +6,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -27,7 +26,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
-import com.equitybot.trade.db.mongodb.order.domain.NormalTradeOrderRequest;
+import com.equitybot.trade.db.mongodb.order.dto.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.util.DateFormatUtil;
@@ -63,7 +62,7 @@ import com.zerodhatech.ticker.OnOrderUpdate;
 import com.zerodhatech.ticker.OnTicks;
 
 @Component
-public class TradePortZerodhaConnect {
+public class KiteConnectService {
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
 	@Value("${spring.kafka.producer.topic-kite-tick}")
@@ -97,7 +96,7 @@ public class TradePortZerodhaConnect {
 	public void setCacheLastTradedPrice(IgniteCache<Long, Double> cacheLastTradedPrice) {
 		this.cacheLastTradedPrice = cacheLastTradedPrice;
 	}
-	public TradePortZerodhaConnect() {
+	public KiteConnectService() {
 		IgniteConfiguration cfg = new IgniteConfiguration();
 		Ignite ignite = Ignition.start(cfg);
 		Ignition.setClientMode(true);
@@ -124,7 +123,7 @@ public class TradePortZerodhaConnect {
 	}
 
 	/** Place order. */
-	public void placeOrder(NormalTradeOrderRequest tradeRequest) throws KiteException, IOException {
+	public Order placeOrder(OrderRequestDTO tradeRequest){
 		/**
 		 * Place order method requires a orderParams argument which contains,
 		 * tradingsymbol, exchange, transaction_type, order_type, quantity, product,
@@ -137,114 +136,160 @@ public class TradePortZerodhaConnect {
 		 * KiteException will have error message in it Success of this call implies only
 		 * order has been placed successfully, not order execution.
 		 */
-
-		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId());
-		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = tradeRequest.getQuantity();
-		orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
-		List<InstrumentModel> instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-		orderParams.tradingsymbol = instrumentList.get(0).getTradingSymbol();
-		orderParams.product = tradeRequest.getProduct().toUpperCase();
-		orderParams.exchange = instrumentList.get(0).getExchange().toUpperCase();
-		orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-		orderParams.validity = tradeRequest.getValidity().toUpperCase();
-		if(tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_LIMIT) || 
-				tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_SL) ||
-				tradeRequest.getOrderType().equalsIgnoreCase(Constants.ORDER_TYPE_SLM)) {
-			orderParams.price=tradeRequest.getPrice();
-			orderParams.triggerPrice = tradeRequest.getTriggerPrice();
+		boolean statusFlag=false;
+		int ctr=0;
+		while (!statusFlag) {
+			
+			KiteConnect kiteConnect;
+			try {
+				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
+				OrderParams orderParams = new OrderParams();
+				orderParams.quantity = tradeRequest.getQuantity();
+				orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
+				InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+				orderParams.product = tradeRequest.getProduct().toUpperCase();
+				orderParams.exchange = instrumentList.getExchange().toUpperCase();
+				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+				orderParams.validity = tradeRequest.getValidity().toUpperCase();
+				orderParams.price=tradeRequest.getPrice();
+				orderParams.triggerPrice = tradeRequest.getTriggerPrice();
+				orderParams.tag = tradeRequest.getTag();
+				Order order = kiteConnect.placeOrder(orderParams, tradeRequest.getVariety().toLowerCase());
+				LOGGER.info(order.orderId);
+				statusFlag=true;
+				return order;
+			} catch (JSONException | IOException | KiteException e) {
+				// TODO Auto-generated catch block
+				// Invoke Naresh Ji's Service Ji
+				if(ctr>3) {
+					// TODO Implementation need to be done here throw custom exception
+					
+				}
+				ctr++;
+				e.printStackTrace();
+			}
+			
+			
 		}
-		orderParams.tag = tradeRequest.getTag();
-		Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-		LOGGER.info(order.orderId);
+		return null;
+		
+	}
+	/** Modify order. */
+	public Order modifyOrder(OrderRequestDTO tradeRequest) throws KiteException, IOException {
+		// Order modify request will return order model which will contain only
+		// order_id.
+		boolean statusFlag=false;
+		int ctr=0;
+		while (!statusFlag) {
+			
+			KiteConnect kiteConnect;
+			try {
+				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
+				
+				OrderParams orderParams = new OrderParams();
+				orderParams.quantity = tradeRequest.getQuantity();
+				orderParams.orderType = tradeRequest.getOrderType().toUpperCase();
+				InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+				orderParams.product = tradeRequest.getProduct();
+				orderParams.exchange = instrumentList.getExchange().toUpperCase();
+				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+				orderParams.validity = tradeRequest.getValidity().toUpperCase();
+				orderParams.price = tradeRequest.getPrice();
+
+				Order order = kiteConnect.modifyOrder(tradeRequest.getOrderId(), orderParams, tradeRequest.getValidity().toLowerCase());
+				LOGGER.info("Modified Order ID: ");
+				return order;
+			} catch (JSONException | IOException | KiteException e) {
+				// TODO Auto-generated catch block
+				// Invoke Naresh Ji's Service Ji
+				if(ctr>3) {
+					// TODO Implementation need to be done here throw custom exception
+					
+				}
+				ctr++;
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+	
+	/** Cancel an order */
+	public void cancelOrder(OrderRequestDTO tradeRequest) throws KiteException, IOException {
+		boolean statusFlag=false;
+		int ctr=0;
+		while (!statusFlag) {
+			
+			KiteConnect kiteConnect;
+			try {
+				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
+				Order order2 = kiteConnect.cancelOrder(tradeRequest.getOrderId(), tradeRequest.getVariety());
+				LOGGER.info(order2.orderId);
+			} catch (JSONException | IOException | KiteException e) {
+				// TODO Auto-generated catch block
+				// Invoke Naresh Ji's Service Ji
+				if(ctr>3) {
+					// TODO Implementation need to be done here throw custom exception
+					
+				}
+				ctr++;
+				e.printStackTrace();
+			}
+		}
+		
 	}
 
 	/** Place bracket order. */
-	public void placeBracketOrder(NormalTradeOrderRequest tradeRequest) throws KiteException, IOException {
+	public void placeBracketOrder(OrderRequestDTO tradeRequest) throws KiteException, IOException {
 		/**
 		 * Bracket order:- following is example param for bracket order*
 		 * trailing_stoploss and stoploss_value are points and not tick or price
 		 */
-		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId());
+		KiteConnect kiteConnect=getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
 		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = tradeRequest.getQuantity();
-		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
-		Tick tick=cacheLatestTick.get(tradeRequest.getInstrumentToken());
-		Map<String, ArrayList<Depth>> depthMap=tick.getMarketDepth();
-		// int totalOrderQuantity=0;
-		
-		/*////
-		for (Entry<String, ArrayList<Depth>> entry : depthMap.entrySet()) {
-			if(tradeRequest.getOrderType().equalsIgnoreCase("Buy")) {
-				if(entry.getKey().equalsIgnoreCase("SELL")) {
-					List<Depth> depth=entry.getValue();
-					if(depth!=null && depth.size()>0) {
-						for (Iterator<Depth> iterator = depth.iterator(); iterator.hasNext();) {
-							Depth depth2 = (Depth) iterator.next();
-							totalOrderQuantity=totalOrderQuantity+depth2.getQuantity();
-							if(totalOrderQuantity>=tradeRequest.getQuantity()) {
-								price=depth2.getPrice();
-								break;
-							}
-						}
-						
-					}
-					
-				}
-			}
-			
-	        System.out.println(entry.getKey() + ":" + entry.getValue());
-	    }
-		*/////
-		double price = getBuyPriceFromDepth(depthMap, tradeRequest.getQuantity());
-
-		orderParams.price = price;
-		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.tradingsymbol = "SOUTHBANK";
-		orderParams.trailingStoploss = 1.0;
-		orderParams.stoploss = 2.0;
-		orderParams.exchange = Constants.EXCHANGE_NSE;
-		orderParams.validity = Constants.VALIDITY_DAY;
-		orderParams.squareoff = 3.0;
-		orderParams.product = Constants.PRODUCT_MIS;
-		Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
-		LOGGER.info(order10.orderId);
+        orderParams.quantity = 1;
+        orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
+        orderParams.price = 30.5;
+        orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
+        orderParams.tradingsymbol = "SOUTHBANK";
+        orderParams.trailingStoploss = 1.0;
+        orderParams.stoploss = 2.0;
+        orderParams.exchange = Constants.EXCHANGE_NSE;
+        orderParams.validity = Constants.VALIDITY_DAY;
+        orderParams.squareoff = 3.0;
+        orderParams.product = Constants.PRODUCT_MIS;
+         Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
+         System.out.println(order10.orderId);
 	}
 	
-	private double getBuyPriceFromDepth(Map<String, ArrayList<Depth>> depthMap, int totalOrderQuantity) {
-		List<Depth> depths = depthMap.get("sell");
-		int totalAvalableSellQuantity = 0;
-		for(Depth depth : depths ) {
-			totalAvalableSellQuantity = totalAvalableSellQuantity + depth.getQuantity();
-			if(totalOrderQuantity <= totalAvalableSellQuantity) {
-				return depth.getPrice();
-			}
-		}
-		return 0.0;
-	}
-
 	/** Place cover order. */
 	public void placeCoverOrder(KiteConnect kiteConnect) throws KiteException, IOException {
-		/**
-		 * Cover Order:- following is an example param for the cover order key: quantity
-		 * value: 1 key: price value: 0 key: transaction_type value: BUY key:
-		 * tradingsymbol value: HINDALCO key: exchange value: NSE key: validity value:
-		 * DAY key: trigger_price value: 157 key: order_type value: MARKET key: variety
-		 * value: co key: product value: MIS
-		 */
-		OrderParams orderParams = new OrderParams();
-		orderParams.price = 0.0;
-		orderParams.quantity = 1;
-		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.orderType = Constants.ORDER_TYPE_MARKET;
-		orderParams.tradingsymbol = "SOUTHBANK";
-		orderParams.exchange = Constants.EXCHANGE_NSE;
-		orderParams.validity = Constants.VALIDITY_DAY;
-		orderParams.triggerPrice = 30.5;
-		orderParams.product = Constants.PRODUCT_MIS;
+		/** Cover Order:- following is an example param for the cover order
+         * key: quantity value: 1
+         * key: price value: 0
+         * key: transaction_type value: BUY
+         * key: tradingsymbol value: HINDALCO
+         * key: exchange value: NSE
+         * key: validity value: DAY
+         * key: trigger_price value: 157
+         * key: order_type value: MARKET
+         * key: variety value: co
+         * key: product value: MIS
+         */
+        OrderParams orderParams = new OrderParams();
+        orderParams.price = 0.0;
+        orderParams.quantity = 1;
+        orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
+        orderParams.orderType = Constants.ORDER_TYPE_MARKET;
+        orderParams.tradingsymbol = "SOUTHBANK";
+        orderParams.exchange = Constants.EXCHANGE_NSE;
+        orderParams.validity = Constants.VALIDITY_DAY;
+        orderParams.triggerPrice = 30.5;
+        orderParams.product = Constants.PRODUCT_MIS;
 
-		Order order11 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_CO);
-		LOGGER.info(order11.orderId);
+        Order order11 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_CO);
+        System.out.println(order11.orderId);
 	}
 
 	/** Get trigger range. */
@@ -298,23 +343,7 @@ public class TradePortZerodhaConnect {
 		LOGGER.info("" + trades.size());
 	}
 
-	/** Modify order. */
-	public void modifyOrder(KiteConnect kiteConnect) throws KiteException, IOException {
-		// Order modify request will return order model which will contain only
-		// order_id.
-		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = 1;
-		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
-		orderParams.tradingsymbol = "ASHOKLEY";
-		orderParams.product = Constants.PRODUCT_CNC;
-		orderParams.exchange = Constants.EXCHANGE_NSE;
-		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.validity = Constants.VALIDITY_DAY;
-		orderParams.price = 122.25;
-
-		Order order21 = kiteConnect.modifyOrder("180116000984900", orderParams, Constants.VARIETY_REGULAR);
-		LOGGER.info(order21.orderId);
-	}
+	
 
 	/** Modify first leg bracket order. */
 	public void modifyFirstLegBo(KiteConnect kiteConnect) throws KiteException, IOException {
@@ -366,14 +395,7 @@ public class TradePortZerodhaConnect {
 		LOGGER.info(order.orderId);
 	}
 
-	/** Cancel an order */
-	public void cancelOrder(KiteConnect kiteConnect) throws KiteException, IOException {
-		// Order modify request will return order model which will contain only
-		// order_id.
-		// Cancel order will return order model which will only have orderId.
-		Order order2 = kiteConnect.cancelOrder("180116000727266", Constants.VARIETY_REGULAR);
-		LOGGER.info(order2.orderId);
-	}
+	
 
 	public void exitBracketOrder(KiteConnect kiteConnect) throws KiteException, IOException {
 		Order order = kiteConnect.cancelOrder("180116000812153", "180116000798058", Constants.VARIETY_BO);
@@ -603,14 +625,18 @@ public class TradePortZerodhaConnect {
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
 
-	public KiteConnect getKiteConnectSession(String userId)
+	public boolean calculateTrailingStopLoss(long instrumentToken,Tick tick) {
+		
+		return false;
+	}
+	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
-		/*if (kitePropertyList != null) {
+		if (kitePropertyList != null) {
 			kitePropertyList.setRequestToken(requestToken);
 			propertyRepository.save(kitePropertyList);
-		}*/
+		}
 		if (kiteSessionList != null && kiteSessionList.size() > 0) {
 			kiteConnect = kiteSessionList.stream().filter(x -> userId.equals(x.getUserId())).findFirst().orElse(null);
 		} else {
@@ -625,7 +651,6 @@ public class TradePortZerodhaConnect {
 					LOGGER.info("session expired");
 				}
 			});
-			LOGGER.info("Request Token: "+kiteProperty.getRequestToken()+" Api Secret: "+kiteProperty.getApiSecret());
 			User user = kiteConnect.generateSession(kiteProperty.getRequestToken(), kiteProperty.getApiSecret());
 			kiteConnect.setAccessToken(user.accessToken);
 			kiteConnect.setPublicToken(user.publicToken);
@@ -635,6 +660,7 @@ public class TradePortZerodhaConnect {
 		}
 		return kiteConnect;
 	}
+
 
 	public ArrayList<Tick> getInstrunentTicksData() {
 		return instrunentTicksData;

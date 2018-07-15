@@ -1,0 +1,41 @@
+package com.equitybot.trade.order.placeorder.converter;
+
+import com.equitybot.trade.db.mongodb.order.dto.OrderResponseDTO;
+import com.zerodhatech.models.Order;
+
+public class TradeDataConverter {
+
+	public static OrderResponseDTO convertToOrderDTO(Order order,long instrumentToken) {
+		if (order != null) {
+			OrderResponseDTO dto = new OrderResponseDTO();
+			dto.setAccountId(order.accountId);
+			dto.setAveragePrice(order.averagePrice);
+			dto.setDisclosedQuantity(order.disclosedQuantity);
+			dto.setExchange(order.exchange);
+			dto.setExchangeOrderId(order.exchangeOrderId);
+			dto.setExchangeTimestamp(order.exchangeTimestamp);
+			dto.setFilledQuantity(order.filledQuantity);
+			dto.setInstrumentToken(instrumentToken);
+			dto.setOrderId(order.orderId);
+			dto.setOrderTimestamp(order.orderTimestamp);
+			dto.setOrderType(order.orderType);
+			dto.setOrderVariety(order.orderVariety);
+			dto.setParentOrderId(order.parentOrderId);
+			dto.setPendingQuantity(order.pendingQuantity);
+			dto.setPrice(order.price);
+			dto.setProduct(order.product);
+			dto.setQuantity(order.quantity);
+			dto.setStatus(order.status);
+			dto.setStatusMessage(order.statusMessage);
+			dto.setSymbol(order.symbol);
+			dto.setTag(order.tag);
+			dto.setTradingSymbol(order.tradingSymbol);
+			dto.setTransactionType(order.transactionType);
+			dto.setTriggerPrice(order.triggerPrice);
+			dto.setUserId(order.userId);
+			dto.setValidity(order.validity);
+			return dto;
+		}
+		return null;
+	}
+}

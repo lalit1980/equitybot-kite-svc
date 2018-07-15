@@ -7,7 +7,7 @@ import com.mongodb.client.result.DeleteResult;
 
 public interface InstrumentRespositoryCustom {
 
-	public List<InstrumentModel> findByInstrumentToken(String instrumentToken);
+	public InstrumentModel findByInstrumentToken(String instrumentToken);
 
 	public List<InstrumentModel> findByExchangeToken(String exchangeToken);
 
