@@ -29,17 +29,17 @@ public class DateFormatUtil {
 
 	public static final String MONGODB_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
 	public static final String TA4J = "yyyy-MM-dd";
-	
+
 	public static String toISO8601UTC(Date date, String dateFormat) {
 
 		Format formatter = new SimpleDateFormat(MONGODB_DATE_FORMAT);
 		return formatter.format(date);
 	}
 
-	public static Date fromISO8601UTC(String dateStr) {
-		TimeZone timeZone = TimeZone.getTimeZone("Asia/Kolkata");
-		DateFormat df = new SimpleDateFormat(MONGODB_DATE_FORMAT);
-		df.setTimeZone(timeZone);
+	public static Date fromISO8601UTC(String dateStr, String dateFormat) {
+		TimeZone tz = TimeZone.getTimeZone("UTC");
+		DateFormat df = new SimpleDateFormat(dateFormat);
+		df.setTimeZone(tz);
 
 		try {
 			return df.parse(dateStr);
@@ -49,7 +49,6 @@ public class DateFormatUtil {
 
 		return null;
 	}
-
 	public static List<InstrumentModel> convertInstrumentModel(List<Instrument> instruments) {
 		List<InstrumentModel> instrumentModelList = new ArrayList<InstrumentModel>();
 
@@ -77,6 +76,66 @@ public class DateFormatUtil {
 			}
 		}
 		return instrumentModelList;
+	}
+	public static Date fromISO8601UTC(String dateStr) {
+		TimeZone timeZone = TimeZone.getTimeZone("Asia/Kolkata");
+		DateFormat df = new SimpleDateFormat(MONGODB_DATE_FORMAT);
+		df.setTimeZone(timeZone);
+
+		try {
+			return df.parse(dateStr);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(com.zerodhatech.models.Tick tick) {
+		com.equitybot.trade.db.mongodb.tick.domain.Tick tickModel=null;
+		if(tick!=null) {
+			tickModel = new com.equitybot.trade.db.mongodb.tick.domain.Tick();
+			tickModel.setAverageTradePrice(tick.getAverageTradePrice());
+			tickModel.setChange(tick.getChange());
+			tickModel.setClosePrice(tick.getClosePrice());
+			tickModel.setHighPrice(tick.getHighPrice());
+			tickModel.setId(UUID.randomUUID().toString());
+			tickModel.setInstrumentToken(tick.getInstrumentToken());
+			tickModel.setLastTradedPrice(tick.getLastTradedPrice());
+			tickModel.setLastTradedQuantity(tick.getLastTradedQuantity());
+			tickModel.setLastTradedTime(tick.getLastTradedTime());
+			tickModel.setLowPrice(tick.getLowPrice());
+			tickModel.setMode(tick.getMode());
+			tickModel.setOi(tick.getOi());
+			tickModel.setOiDayHigh(tick.getOpenInterestDayHigh());
+			tickModel.setOiDayLow(tick.getOpenInterestDayLow());
+			tickModel.setOpenPrice(tick.getOpenPrice());
+			tickModel.setTickTimestamp(tick.getTickTimestamp());
+			tickModel.setTotalBuyQuantity(tick.getTotalBuyQuantity());
+			tickModel.setTotalSellQuantity(tick.getTotalSellQuantity());
+			tickModel.setTradable(tick.isTradable());
+			tickModel.setVolumeTradedToday(tick.getVolumeTradedToday());
+			Map<String, ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>> depth=new HashMap<String, ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>>();
+			if(tick.getMarketDepth()!=null && tick.getMarketDepth().size()>0) {
+				Map<String, ArrayList<Depth>> marketDepth=tick.getMarketDepth();
+				marketDepth.forEach((k,v)->{
+					 List<Depth> depthList=v;
+					 ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth> mongoDepthList=new ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>();
+					 depthList.forEach(item->{
+						 com.equitybot.trade.db.mongodb.tick.domain.Depth depthObj=new com.equitybot.trade.db.mongodb.tick.domain.Depth();
+						 depthObj.setId(UUID.randomUUID().toString());	
+						 depthObj.setOrders(item.getOrders());
+							depthObj.setPrice(item.getPrice());
+							depthObj.setQuantity(item.getQuantity());
+							mongoDepthList.add(depthObj);
+						});
+					 depth.put(k, mongoDepthList);
+				 });
+				 tickModel.setDepth(depth);
+			}
+			
+		}
+	
+		return tickModel;
 	}
 	
 	public static List<Tick> loadHistoricalDataSeries(HistoricalData historicalData, long instrumentToken) {
@@ -158,11 +217,8 @@ public class DateFormatUtil {
 		}
 		return tickList;
 	}
-
 	public static ZonedDateTime convertKiteTickTimestampFormat(String kiteTimestamp) throws ParseException {
-		SimpleDateFormat sdf=new SimpleDateFormat(KITE_TICK_TIMESTAMP_FORMAT,Locale.US);
-		ZoneId zoneid1 = ZoneId.of("Asia/Kolkata");  
-		return ZonedDateTime.ofInstant(sdf.parse(kiteTimestamp).toInstant(), zoneid1);
+		return ZonedDateTime.ofInstant(new SimpleDateFormat(KITE_TICK_TIMESTAMP_FORMAT, Locale.US).parse(kiteTimestamp).toInstant(), ZoneId.systemDefault());
 	}
 	
 }

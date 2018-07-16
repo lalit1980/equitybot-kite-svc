@@ -37,21 +37,6 @@ public class OrderReceiverListener {
 		placeTradeOrder(tradeBO);
 	}
 
-	@KafkaListener(topicPartitions = {
-			@TopicPartition(topic = "topic-kite-tradeorder", partitions = { "1" }) })
-	public void listenPartition1(ConsumerRecord<?, ?> record) throws IOException {
-		Gson gson = new Gson();
-		OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
-		placeTradeOrder(tradeBO);
-	}
-
-	@KafkaListener(topicPartitions = {
-			@TopicPartition(topic = "topic-kite-tradeorder", partitions = { "2" }) })
-	public void listenPartition2(ConsumerRecord<?, ?> record) throws IOException {
-		Gson gson = new Gson();
-		OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
-		placeTradeOrder(tradeBO);
-	}
 	public void placeTradeOrder(OrderRequestDTO tradeBO) {
 		logger.info("Received Trade Order: "+tradeBO.toString() );
 		if(tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {

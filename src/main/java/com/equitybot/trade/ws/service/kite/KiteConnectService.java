@@ -3,15 +3,14 @@ package com.equitybot.trade.ws.service.kite;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -19,18 +18,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import com.equitybot.trade.converter.CustomTickBarList;
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
 import com.equitybot.trade.db.mongodb.order.dto.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
+import com.equitybot.trade.db.mongodb.tick.repository.TickRepository;
 import com.equitybot.trade.ignite.configs.IgniteConfig;
 import com.equitybot.trade.util.DateFormatUtil;
+import com.equitybot.trade.util.TickSerializer;
 import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
@@ -75,9 +74,20 @@ public class KiteConnectService {
 	private IgniteCache<Long, Double> cacheLastTradedPrice;
 	private IgniteCache<Long, String> cacheTradeOrder;
 	private IgniteCache<Long, Tick> cacheLatestTick;
+	
+	@Autowired
+	private CustomTickBarList customTickBarList;
+	
+	@Autowired
+	TickRepository repository;
+
+	@Autowired
+	TickSerializer serializer;
 
 	@Autowired
 	IgniteConfig igniteConfig;
+	
+	private String userId;
 	
 	@Autowired
 	PropertyRepository propertyRepository;
@@ -619,6 +629,10 @@ public class KiteConnectService {
 					for (int i = 0; i < ticks.size(); i++) {
 						String newJson = new Gson().toJson(ticks.get(i));
 						LOGGER.info("" + newJson);
+						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz=convertTickModel(ticks.get(i));
+						LOGGER.info(tickz.toString());
+						 customTickBarList.addTick(tickz);
+						 repository.saveTickData(tickz);
 						if(cacheLatestTick!=null) {
 							cacheLatestTick.put(ticks.get(i).getInstrumentToken(), ticks.get(i));
 							LOGGER.info("Cached Tick Instument Token: "+ cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getLastTradedPrice());
@@ -645,6 +659,7 @@ public class KiteConnectService {
 	}
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
+		
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
 		if (kitePropertyList != null) {
@@ -703,23 +718,13 @@ public class KiteConnectService {
 					for (int j = 0; j < list.size(); j++) {
 						try {
 							Tick tick=list.get(j);
+							com.equitybot.trade.db.mongodb.tick.domain.Tick tickz=convertTickModel(tick);
+							customTickBarList.backTest(tickz);
+							repository.saveTickData(tickz);
 							Thread.sleep(300);
-							String newJson = new Gson().toJson(tick);
 							if(this.cacheLatestTick!=null) {
 								this.cacheLatestTick.put(tick.getInstrumentToken(), tick);
-								//LOGGER.info("Back Test Cached Tick Instument Token: "+ cacheLatestTick.get(tick.getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(tick.getInstrumentToken()).getLastTradedPrice());
 							}
-							ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(tickProducerTopic,newJson);
-							future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-								@Override
-								public void onSuccess(SendResult<String, String> result) {
-									//LOGGER.info("Sent message: " + result);
-								}
-								@Override
-								public void onFailure(Throwable ex) {
-									LOGGER.info("Failed to send message");
-								}
-							});
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -742,4 +747,58 @@ public class KiteConnectService {
 	public void setCacheTradeOrder(IgniteCache<Long, String> cacheTradeOrder) {
 		this.cacheTradeOrder = cacheTradeOrder;
 	}
+	public com.equitybot.trade.db.mongodb.tick.domain.Tick convertTickModel(com.zerodhatech.models.Tick tick) {
+		com.equitybot.trade.db.mongodb.tick.domain.Tick tickModel=null;
+		if(tick!=null) {
+			tickModel = new com.equitybot.trade.db.mongodb.tick.domain.Tick();
+			tickModel.setAverageTradePrice(tick.getAverageTradePrice());
+			tickModel.setChange(tick.getChange());
+			tickModel.setClosePrice(tick.getClosePrice());
+			tickModel.setHighPrice(tick.getHighPrice());
+			tickModel.setId(UUID.randomUUID().toString());
+			tickModel.setInstrumentToken(tick.getInstrumentToken());
+			tickModel.setLastTradedPrice(tick.getLastTradedPrice());
+			tickModel.setLastTradedQuantity(tick.getLastTradedQuantity());
+			tickModel.setLastTradedTime(tick.getLastTradedTime());
+			tickModel.setLowPrice(tick.getLowPrice());
+			tickModel.setMode(tick.getMode());
+			tickModel.setOi(tick.getOi());
+			tickModel.setOiDayHigh(tick.getOpenInterestDayHigh());
+			tickModel.setOiDayLow(tick.getOpenInterestDayLow());
+			tickModel.setOpenPrice(tick.getOpenPrice());
+			tickModel.setTickTimestamp(tick.getTickTimestamp());
+			tickModel.setTotalBuyQuantity(tick.getTotalBuyQuantity());
+			tickModel.setTotalSellQuantity(tick.getTotalSellQuantity());
+			tickModel.setTradable(tick.isTradable());
+			tickModel.setVolumeTradedToday(tick.getVolumeTradedToday());
+			Map<String, ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>> depth=new HashMap<String, ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>>();
+			if(tick.getMarketDepth()!=null && tick.getMarketDepth().size()>0) {
+				Map<String, ArrayList<Depth>> marketDepth=tick.getMarketDepth();
+				marketDepth.forEach((k,v)->{
+					 List<Depth> depthList=v;
+					 ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth> mongoDepthList=new ArrayList<com.equitybot.trade.db.mongodb.tick.domain.Depth>();
+					 depthList.forEach(item->{
+						 com.equitybot.trade.db.mongodb.tick.domain.Depth depthObj=new com.equitybot.trade.db.mongodb.tick.domain.Depth();
+						 depthObj.setId(UUID.randomUUID().toString());	
+						 depthObj.setOrders(item.getOrders());
+							depthObj.setPrice(item.getPrice());
+							depthObj.setQuantity(item.getQuantity());
+							mongoDepthList.add(depthObj);
+						});
+					 depth.put(k, mongoDepthList);
+				 });
+				 tickModel.setDepth(depth);
+			}
+			
+		}
+	
+		return tickModel;
+	}
+	public String getUserId() {
+		return userId;
+	}
+	public void setUserId(String userId) {
+		this.userId = userId;
+	}
+	
 }
