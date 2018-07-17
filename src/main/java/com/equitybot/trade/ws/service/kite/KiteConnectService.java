@@ -164,7 +164,7 @@ public class KiteConnectService {
 		        InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
 				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
 		        orderParams.product = Constants.PRODUCT_MIS;
-		        orderParams.exchange = Constants.EXCHANGE_NSE;
+		        orderParams.exchange = Constants.EXCHANGE_NFO;
 		        orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
 		        orderParams.validity = Constants.VALIDITY_DAY;
 		        orderParams.tag = tradeRequest.getTag(); //tag is optional and it cannot be more than 8 characters and only alphanumeric is allowed
