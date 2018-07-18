@@ -48,7 +48,7 @@ public class KafkaConsumerTradeOrderConfig {
 			propsMap.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 			propsMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 			propsMap.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
-			propsMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+			propsMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 			return propsMap;
 		}
 

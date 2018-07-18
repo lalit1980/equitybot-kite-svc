@@ -9,7 +9,7 @@ spring:
     consumer:
       topic-kite-tick: topic-kite-tick
       topic-kite-tradeorder: topic-kite-tradeorder
-      auto-offset-reset: earliest
+      auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       from:

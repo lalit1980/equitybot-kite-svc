@@ -157,28 +157,38 @@ public class KiteConnectService {
 			
 			KiteConnect kiteConnect;
 			try {
+				LOGGER.info("Logged in User ID: "+ tradeRequest.getUserId());
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(),tradeRequest.getRequestToken());
 		        OrderParams orderParams = new OrderParams();
-		        orderParams.quantity = tradeRequest.getQuantity();
-		        orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 		        InstrumentModel instrumentList=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
-		        orderParams.product = Constants.PRODUCT_MIS;
-		        orderParams.exchange = Constants.EXCHANGE_NFO;
-		        orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-		        orderParams.validity = Constants.VALIDITY_DAY;
-		        orderParams.tag = tradeRequest.getTag(); //tag is optional and it cannot be more than 8 characters and only alphanumeric is allowed
-		        Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-		        if( tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && order.orderId!=null) {
-		        	this.getCacheTradeOrder().put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
-		        }else if( tradeRequest.getTransactionType().equalsIgnoreCase("Sell") && order.orderId!=null) {
-		        	if(this.getCacheTradeOrder().containsKey(tradeRequest.getInstrumentToken())) {
-		        		this.getCacheTradeOrder().remove(tradeRequest.getInstrumentToken());
-		        	}
+		        int lot_size=instrumentList.getLot_size();
+		        int quantity=tradeRequest.getQuantity();;
+		        if (quantity%lot_size ==0 && kiteConnect!=null) {
+		        	orderParams.quantity = tradeRequest.getQuantity();
+		        	orderParams.orderType = Constants.ORDER_TYPE_MARKET;
+		        	orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+			        orderParams.product = Constants.PRODUCT_MIS;
+			        orderParams.exchange = Constants.EXCHANGE_NFO;
+			        orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+			        orderParams.validity = Constants.VALIDITY_DAY;
+			        orderParams.tag = tradeRequest.getTag(); //tag is optional and it cannot be more than 8 characters and only alphanumeric is allowed
+			        Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+			        if( tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && order.orderId!=null) {
+			        	this.getCacheTradeOrder().put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+			        }else if( tradeRequest.getTransactionType().equalsIgnoreCase("Sell") && order.orderId!=null) {
+			        	if(this.getCacheTradeOrder().containsKey(tradeRequest.getInstrumentToken())) {
+			        		this.getCacheTradeOrder().remove(tradeRequest.getInstrumentToken());
+			        	}
+			        }
+			        LOGGER.info(order.orderId);
+					statusFlag=true;
+					return order;
+		        }else
+		        {
+		          LOGGER.info("Instrument Code: "+ instrumentList.getTradingSymbol() +" does not match with allowed quantity "+quantity+" Lost size allowed: "+lot_size);  
 		        }
-		        LOGGER.info(order.orderId);
-				statusFlag=true;
-				return order;
+		        
+				
 			} catch (JSONException | IOException | KiteException e) {
 				// TODO Auto-generated catch block
 				// Invoke Naresh Ji's Service Ji
@@ -628,19 +638,15 @@ public class KiteConnectService {
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
 					for (int i = 0; i < ticks.size(); i++) {
 						String newJson = new Gson().toJson(ticks.get(i));
-						LOGGER.info("" + newJson);
 						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz=convertTickModel(ticks.get(i));
-						LOGGER.info(tickz.toString());
 						 customTickBarList.addTick(tickz);
 						 repository.saveTickData(tickz);
 						if(cacheLatestTick!=null) {
 							cacheLatestTick.put(ticks.get(i).getInstrumentToken(), ticks.get(i));
-							LOGGER.info("Cached Tick Instument Token: "+ cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getLastTradedPrice());
+							//LOGGER.info("Cached Tick Instument Token: "+ cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+" Last Traded Price: "+  cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getLastTradedPrice());
 						}
 						kafkaTemplate.send(tickProducerTopic, newJson);
 					}
-				} else {
-					LOGGER.info("Tick Not Received");
 				}
 			}
 		});
@@ -649,7 +655,7 @@ public class KiteConnectService {
 		tickerProvider.setMaximumRetryInterval(30);
 		tickerProvider.connect();
 		boolean isConnected = tickerProvider.isConnectionOpen();
-		LOGGER.info("" + isConnected);
+		LOGGER.info("Socket connection: " + isConnected);
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
 
@@ -659,17 +665,22 @@ public class KiteConnectService {
 	}
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
-		
+		LOGGER.info("Get Session User Id: "+userId+" Request Token: "+requestToken);
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
-		if (kitePropertyList != null) {
+		if (kitePropertyList != null && requestToken!=null) {
 			kitePropertyList.setRequestToken(requestToken);
 			propertyRepository.save(kitePropertyList);
 		}
 		if (kiteSessionList != null && kiteSessionList.size() > 0) {
 			kiteConnect = kiteSessionList.stream().filter(x -> userId.equals(x.getUserId())).findFirst().orElse(null);
+			if(kiteConnect==null) {
+				LOGGER.info("Kite Connect is Null");
+			}
+			
 		} else {
 			KiteProperty kiteProperty = propertyRepository.findByUserId(userId);
+			LOGGER.info("Inside Else: "+kiteProperty.toString());
 			kiteConnect = new KiteConnect(kiteProperty.getApiKey());
 			kiteConnect.setUserId(kiteProperty.getUserId());
 			kiteConnect.setEnableLogging(true);
@@ -680,6 +691,7 @@ public class KiteConnectService {
 					LOGGER.info("session expired");
 				}
 			});
+			LOGGER.info("kiteProperty.getRequestToken(): "+kiteProperty.getRequestToken()+" kiteProperty.getApiSecret(): "+kiteProperty.getApiSecret() );
 			User user = kiteConnect.generateSession(kiteProperty.getRequestToken(), kiteProperty.getApiSecret());
 			kiteConnect.setAccessToken(user.accessToken);
 			kiteConnect.setPublicToken(user.publicToken);
@@ -719,6 +731,7 @@ public class KiteConnectService {
 						try {
 							Tick tick=list.get(j);
 							com.equitybot.trade.db.mongodb.tick.domain.Tick tickz=convertTickModel(tick);
+							LOGGER.info("Got data: "+tick.toString());
 							customTickBarList.backTest(tickz);
 							repository.saveTickData(tickz);
 							Thread.sleep(300);

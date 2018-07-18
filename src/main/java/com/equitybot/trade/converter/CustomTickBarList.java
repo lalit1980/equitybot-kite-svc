@@ -102,7 +102,7 @@ public class CustomTickBarList {
 		future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 			@Override
 			public void onSuccess(SendResult<String, String> result) {
-				logger.info("Sent message: " + result);
+				//logger.info("Sent message: " + result);
 			}
 
 			@Override
@@ -148,7 +148,7 @@ public class CustomTickBarList {
 			future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 				@Override
 				public void onSuccess(SendResult<String, String> result) {
-					logger.info("Sent message: " + result);
+					//logger.info("Sent message: " + result);
 				}
 
 				@Override

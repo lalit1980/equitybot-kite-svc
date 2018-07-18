@@ -8,21 +8,18 @@ spring:
     bootstrap-servers: ${KAFKASERVERS}
     consumer:
       topic-kite-tick: ${KITETICKDATAPUBLISH}
-      topic-kite-tradeorder-tick: ${KITETRADEORDERPUBLISH}
-      group-id-tick: ${KITETICKGROUPID}
-      group-id-tradeorder: ${KITETRADEORDERGROUPID}
+      topic-kite-tradeorder: ${KITETRADEORDERPUBLISH}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       from:
         beginning: true
-        group-id-tick:  ${KITETICKGROUPID1}
-        group-id-tradeorder:  ${KITETRADEORDERGROUPID1}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       topic-kite-tick: ${KITETICKDATAPUBLISH}
       topic-kite-tradeorder: ${KITETRADEORDERPUBLISH}
+      topic-data-seriesupdate: ${ALGOSERIESUPDATETOPIC}
       
   profiles: kubernetes
   
@@ -35,3 +32,9 @@ spring:
 server:
   address: 0.0.0.0
   port: 9010
+tick:
+  file:
+    Serializer: /data/logs
+  barsize: 60
+  maxserializetick: 1024
+  backTestFlag: false
