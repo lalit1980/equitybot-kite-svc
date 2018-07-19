@@ -10,9 +10,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,13 +19,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.ta4j.core.Decimal;
 
 import com.equitybot.trade.converter.CustomTickBarList;
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
 import com.equitybot.trade.db.mongodb.order.domain.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
-import com.equitybot.trade.db.mongodb.order.domain.TradeRequestDTO;
 import com.equitybot.trade.db.mongodb.order.repository.OrderResponseRepository;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
@@ -80,6 +77,8 @@ public class KiteConnectService {
 	private IgniteCache<Long, Double> cacheLastTradedPrice;
 	private IgniteCache<Long, String> cacheTradeOrder;
 	private IgniteCache<Long, Tick> cacheLatestTick;
+	private IgniteCache<String, Double> cacheAvailableFund;
+	private IgniteCache<String, Double> cachePurchasedPrice;
 
 	@Autowired
 	private CustomTickBarList customTickBarList;
@@ -108,9 +107,11 @@ public class KiteConnectService {
 
 	private ArrayList<Tick> instrunentTicksData = new ArrayList<Tick>();
 
-	public void getProfile(KiteConnect kiteConnect) throws IOException, KiteException {
+	public Profile getProfile(String userId, String requestToken) throws IOException, KiteException {
+		KiteConnect kiteConnect = getKiteConnectSession(userId, requestToken);
 		Profile profile = kiteConnect.getProfile();
 		LOGGER.info(profile.userName);
+		return profile;
 	}
 
 	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
@@ -132,19 +133,43 @@ public class KiteConnectService {
 		CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<Long, Tick>("CachedLatestTick");
 		this.cacheLatestTick = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
 
+		CacheConfiguration<String, Double> ccfgCacheAvailableFund = new CacheConfiguration<String, Double>("CacheAvailableFund");
+		this.cacheAvailableFund = igniteConfig.getInstance().getOrCreateCache(ccfgCacheAvailableFund);
+		
+		CacheConfiguration<String, Double> ccfgCachePurchasedPrice = new CacheConfiguration<String, Double>("CachePurchasedPrice");
+		this.cachePurchasedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgCachePurchasedPrice);
+		
+		
+		
 	}
 
 	/** Gets Margin. */
-	public void getMargins(KiteConnect kiteConnect) throws KiteException, IOException {
+	public double getMargins(String userId, String requestToken) throws KiteException, IOException {
 		// Get margins returns margin model, you can pass equity or commodity as
 		// arguments to get margins of respective segments.
 		// Margins margins = kiteConnect.getMargins("equity");
-		Margin margins = kiteConnect.getMargins("equity");
-		LOGGER.info(margins.available.cash);
-		LOGGER.info(margins.utilised.debits);
-		LOGGER.info(margins.utilised.m2mUnrealised);
+		KiteConnect kiteConnect = getKiteConnectSession(userId, requestToken);
+		double avialbleFund=0;
+		//Margin margins = kiteConnect.getMargins(segment);
+		Map<String, Margin> margins=kiteConnect.getMargins();
+		for (Map.Entry<String, Margin> entry : margins.entrySet()) {
+			if("equity".equals(entry.getKey())){
+				avialbleFund=Double.parseDouble(entry.getValue().available.cash);
+				LOGGER.info("Avaivle Fund: "+avialbleFund);
+			}
+		}
+		return avialbleFund;
 	}
-
+	/** Get all positions. */
+	public Map<String, List<Position>> getPositions(String userId, String requestToken) throws KiteException, IOException {
+		// Get positions returns position model which contains list of positions.
+		KiteConnect kiteConnect = getKiteConnectSession(userId, requestToken);
+		Map<String, List<Position>> position = kiteConnect.getPositions();
+		LOGGER.info("" + position.get("net").size());
+		LOGGER.info("" + position.get("day").size());
+		return position;
+		
+	}
 	/** Get orderbook. */
 	public List<Order> getOrders(String userId, String requestToken) throws KiteException, IOException {
 		// Get orders returns order model which will have list of orders inside, which
@@ -243,15 +268,21 @@ public class KiteConnectService {
 			for (Order order2 : orderList) {
 				if (order2 != null && order2.status.equalsIgnoreCase("Complete")
 						&& order2.transactionType.equalsIgnoreCase("BUY")) {
-					this.getCacheTradeOrder().put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+					cachePurchasedPrice.put(order2.tradingSymbol, Double.parseDouble(order2.averagePrice));
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
 					orderResponseRepository.save(result);
+					double availableMargin=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+					cacheAvailableFund.put(tradeRequest.getUserId(), availableMargin);
 					statusFlag=true;
 				} else if (order2 != null && order2.status.equalsIgnoreCase("Complete")
 						&& order2.transactionType.equalsIgnoreCase("Sell")) {
-					this.getCacheTradeOrder().remove(tradeRequest.getInstrumentToken());
+					cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+					cachePurchasedPrice.remove(order2.tradingSymbol);
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
 					orderResponseRepository.save(result);
+					double availableMargin=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+					cacheAvailableFund.put(tradeRequest.getUserId(), availableMargin);
 					statusFlag=true;
 				} else {
 					LOGGER.info("Order Status Not Found: ");
@@ -467,13 +498,7 @@ public class KiteConnectService {
 		LOGGER.info(order.orderId);
 	}
 
-	/** Get all positions. */
-	public void getPositions(KiteConnect kiteConnect) throws KiteException, IOException {
-		// Get positions returns position model which contains list of positions.
-		Map<String, List<Position>> position = kiteConnect.getPositions();
-		LOGGER.info("" + position.get("net").size());
-		LOGGER.info("" + position.get("day").size());
-	}
+	
 
 	/** Get holdings. */
 	public void getHoldings(KiteConnect kiteConnect) throws KiteException, IOException {

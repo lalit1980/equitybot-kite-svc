@@ -2,6 +2,7 @@ package com.equitybot.trade.ws.controller.order;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,10 @@ import com.equitybot.trade.db.mongodb.order.repository.OrderResponseRepository;
 import com.equitybot.trade.order.placeorder.IBuyOrder;
 import com.equitybot.trade.ws.service.kite.KiteConnectService;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
+import com.zerodhatech.models.Margin;
 import com.zerodhatech.models.Order;
+import com.zerodhatech.models.Position;
+import com.zerodhatech.models.Profile;
 
 @RestController
 @RequestMapping("/api")
@@ -106,6 +110,43 @@ public class OrderServiceController {
 		} catch (IOException | KiteException e) {
 			e.printStackTrace();
 			return null;
+		}
+
+	}
+	
+	@GetMapping("/tradeorder/v1.0/position/userId/{userId}/requestToken/{requestToken}")
+	public Map<String, List<Position>> findPositionFromZerodha(@PathVariable("userId") String userId,
+			@PathVariable("requestToken") String requestToken) {
+		try {
+			Map<String, List<Position>> positionList = kiteConnectService.getPositions(userId, requestToken);
+			return positionList;
+		} catch (IOException | KiteException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+	@GetMapping("/tradeorder/v1.0/profile/userId/{userId}/requestToken/{requestToken}")
+	public Profile findProfileFromZerodha(@PathVariable("userId") String userId,
+			@PathVariable("requestToken") String requestToken) {
+		try {
+			Profile positionList = kiteConnectService.getProfile(userId, requestToken);
+			return positionList;
+		} catch (IOException | KiteException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+	}
+	@GetMapping("/tradeorder/v1.0/margin/userId/{userId}/requestToken/{requestToken}")
+	public double findMarginsFromZerodha(@PathVariable("userId") String userId,
+			@PathVariable("requestToken") String requestToken) {
+		try {
+			double marginList = kiteConnectService.getMargins(userId, requestToken);
+			return marginList;
+		} catch (IOException | KiteException e) {
+			e.printStackTrace();
+			return 0.0;
 		}
 
 	}
