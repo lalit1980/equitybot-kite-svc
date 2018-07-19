@@ -9,6 +9,9 @@ import java.util.Map;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.slf4j.Logger;
@@ -59,7 +62,9 @@ public class CustomTickBarList {
 		this.timeSeriesMap = new HashMap<>();
 		
 		CacheConfiguration<String, TimeSeries> ccfg = new CacheConfiguration<String, TimeSeries>("TimeSeriesCache");
+		
 		CacheConfiguration<Long, Double> ccfgLastTradedPrice = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		
 		this.cache = igniteConfig.getInstance().getOrCreateCache(ccfg);
 		this.cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgLastTradedPrice);
 	}

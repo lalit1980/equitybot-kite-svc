@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.TopicPartition;
 
-import com.equitybot.trade.db.mongodb.order.dto.OrderRequestDTO;
+import com.equitybot.trade.db.mongodb.order.domain.OrderRequestDTO;
 import com.equitybot.trade.order.placeorder.IBuyOrder;
 import com.equitybot.trade.order.placeorder.ISellOrder;
 import com.google.gson.Gson;

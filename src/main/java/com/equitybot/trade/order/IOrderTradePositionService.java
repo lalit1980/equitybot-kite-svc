@@ -3,10 +3,10 @@ package com.equitybot.trade.order;
 import java.util.List;
 import java.util.Map;
 
-import com.equitybot.trade.db.mongodb.order.dto.HoldingsDTO;
-import com.equitybot.trade.db.mongodb.order.dto.PositionDTO;
-import com.equitybot.trade.db.mongodb.order.dto.TradeResponseDTO;
-import com.equitybot.trade.db.mongodb.order.dto.UserProfileDTO;
+import com.equitybot.trade.db.mongodb.order.domain.HoldingsDTO;
+import com.equitybot.trade.db.mongodb.order.domain.PositionDTO;
+import com.equitybot.trade.db.mongodb.order.domain.TradeResponseDTO;
+import com.equitybot.trade.db.mongodb.order.domain.UserProfileDTO;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 
 public interface IOrderTradePositionService {

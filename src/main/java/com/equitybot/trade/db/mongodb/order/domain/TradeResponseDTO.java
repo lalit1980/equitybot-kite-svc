@@ -1,4 +1,4 @@
-package com.equitybot.trade.db.mongodb.order.dto;
+package com.equitybot.trade.db.mongodb.order.domain;
 
 import java.io.Serializable;
 import java.util.Date;

@@ -1,10 +1,10 @@
 package com.equitybot.trade.order.placeorder;
 
-import com.equitybot.trade.db.mongodb.order.dto.OrderRequestDTO;
-import com.equitybot.trade.db.mongodb.order.dto.OrderResponseDTO;
+import com.equitybot.trade.db.mongodb.order.domain.OrderRequestDTO;
+import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
 
 public interface IBuyOrder extends IPlaceOrderService{
-	public OrderResponseDTO buyOrder(OrderRequestDTO tradeOrderRequestDTO);
-	public OrderResponseDTO modifyOrder(OrderRequestDTO tradeOrderRequestDTO);
-	public OrderResponseDTO cancelOrder(OrderRequestDTO tradeOrderRequestDTO);
+	public OrderResponse buyOrder(OrderRequestDTO tradeOrderRequestDTO);
+	public OrderResponse modifyOrder(OrderRequestDTO tradeOrderRequestDTO);
+	public OrderResponse cancelOrder(OrderRequestDTO tradeOrderRequestDTO);
 }

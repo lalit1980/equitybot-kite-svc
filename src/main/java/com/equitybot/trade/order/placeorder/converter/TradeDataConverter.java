@@ -1,13 +1,13 @@
 package com.equitybot.trade.order.placeorder.converter;
 
-import com.equitybot.trade.db.mongodb.order.dto.OrderResponseDTO;
+import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
 import com.zerodhatech.models.Order;
 
 public class TradeDataConverter {
 
-	public static OrderResponseDTO convertToOrderDTO(Order order,long instrumentToken) {
+	public static OrderResponse convertToOrderDTO(Order order,long instrumentToken) {
 		if (order != null) {
-			OrderResponseDTO dto = new OrderResponseDTO();
+			OrderResponse dto = new OrderResponse();
 			dto.setAccountId(order.accountId);
 			dto.setAveragePrice(order.averagePrice);
 			dto.setDisclosedQuantity(order.disclosedQuantity);

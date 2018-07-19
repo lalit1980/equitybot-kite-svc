@@ -1,10 +1,15 @@
-package com.equitybot.trade.db.mongodb.order.dto;
+package com.equitybot.trade.db.mongodb.order.domain;
 
-import java.io.Serializable;
 import java.util.Date;
 
-public class OrderResponseDTO implements Serializable{
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+@Document(collection = "OrderResponse")
+public class OrderResponse{
+	    @Indexed(name = "inst_order_res_index")
 		private long instrumentToken;
+		@Id
 	    private String exchangeOrderId;
 	    private String disclosedQuantity;
 	    private String validity;
