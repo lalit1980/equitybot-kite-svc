@@ -260,38 +260,24 @@ public class KiteConnectService {
 
 	}
 
-	private boolean checkOrderStatus(OrderRequestDTO tradeRequest, Order order)
+	private void checkOrderStatus(OrderRequestDTO tradeRequest, Order order)
 			throws KiteException, IOException {
-		boolean statusFlag=false;
 		List<Order> orderList = getOrder(tradeRequest.getUserId(), tradeRequest.getRequestToken(), order.orderId);
 		if (orderList != null && orderList.size() > 0) {
 			for (Order order2 : orderList) {
-				if (order2 != null && order2.status.equalsIgnoreCase("Complete")
-						&& order2.transactionType.equalsIgnoreCase("BUY")) {
+				if (order2 != null && order2.transactionType.equalsIgnoreCase("Buy") && order2.status.equalsIgnoreCase("Complete")) {
 					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
 					cachePurchasedPrice.put(order2.tradingSymbol, Double.parseDouble(order2.averagePrice));
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
 					orderResponseRepository.save(result);
 					double availableMargin=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 					cacheAvailableFund.put(tradeRequest.getUserId(), availableMargin);
-					statusFlag=true;
-				} else if (order2 != null && order2.status.equalsIgnoreCase("Complete")
-						&& order2.transactionType.equalsIgnoreCase("Sell")) {
+				} else if (order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
 					cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
-					cachePurchasedPrice.remove(order2.tradingSymbol);
-					OrderResponse result = convertOrderResponse(order2, tradeRequest);
-					orderResponseRepository.save(result);
-					double availableMargin=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
-					cacheAvailableFund.put(tradeRequest.getUserId(), availableMargin);
-					statusFlag=true;
-				} else {
-					LOGGER.info("Order Status Not Found: ");
-					statusFlag = false;
 				}
 
 			}
 		}
-		return statusFlag;
 	}
 
 	/** Modify order. */
@@ -695,6 +681,7 @@ public class KiteConnectService {
 					for (int i = 0; i < ticks.size(); i++) {
 						String newJson = new Gson().toJson(ticks.get(i));
 						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(ticks.get(i));
+						LOGGER.info(tickz.toString());
 						customTickBarList.addTick(tickz);
 						repository.saveTickData(tickz);
 						if (cacheLatestTick != null) {
