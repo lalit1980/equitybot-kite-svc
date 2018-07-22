@@ -36,12 +36,10 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 
 	@Override
 	public List<InstrumentModel> findByTradingSymbol(String tradingSymbol) {
-		
-		BasicQuery query = 
-				new BasicQuery("{\"tradingSymbol\": {$regex : '" + tradingSymbol + "'} }");
-			query.limit(10);
-		return mongoTemplate.find(query, InstrumentModel.class);
-
+		Query query = new Query();
+		query.addCriteria(Criteria.where("tradingSymbol").regex(tradingSymbol));
+		List<InstrumentModel> list=mongoTemplate.find(query, InstrumentModel.class);
+		return list;
 	}
 
 	@Override
@@ -81,7 +79,7 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 	}
 
 	@Override
-	public List<Long> findByOptions(String exchange, String segment, String tradingSymbol) {
+	public List<InstrumentModel> findByOptions(String exchange, String segment, String tradingSymbol) {
 		
 		Query query = new Query();
 		query.addCriteria(Criteria.where("tradingSymbol").regex(tradingSymbol).and("segment").is(segment).and("exchange").is(exchange));
@@ -94,9 +92,9 @@ public class InstrumentRepositoryImpl implements InstrumentRespositoryCustom {
 				instrumentTokens.add(instrumentModel.getInstrumentToken());
 			});
 		}
-		return instrumentTokens;
+		//return instrumentTokens;
 
-		//return list;
+		return list;
 	}
 
 	@Override

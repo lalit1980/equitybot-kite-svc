@@ -79,6 +79,9 @@ public class KiteConnectService {
 	private IgniteCache<Long, Tick> cacheLatestTick;
 	private IgniteCache<String, Double> cacheAvailableFund;
 	private IgniteCache<String, Double> cachePurchasedPrice;
+	private IgniteCache<Long, StopLossData> cacheStopLoss;
+	private IgniteCache<Long, Double> cacheMaxTrailStopLoss;
+ 
 
 	@Autowired
 	private CustomTickBarList customTickBarList;
@@ -139,6 +142,13 @@ public class KiteConnectService {
 		CacheConfiguration<String, Double> ccfgCachePurchasedPrice = new CacheConfiguration<String, Double>("CachePurchasedPrice");
 		this.cachePurchasedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgCachePurchasedPrice);
 		
+		CacheConfiguration<Long, StopLossData> ccfgStopLoss = new CacheConfiguration<Long, StopLossData>("CacheStopLoss");
+		this.cacheStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgStopLoss);
+		
+		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
+		this.cacheMaxTrailStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcacheMaxTrailStopLoss);
+		
+		
 		
 		
 	}
@@ -196,29 +206,23 @@ public class KiteConnectService {
 		LOGGER.info("list size is " + orders.size());
 		return orders;
 	}
-
+	
+	public Order sellOrderTrailStopLoss(Long instrumentToken) {
+		LOGGER.info(" -- sell Order for instrumentToken : {} # By Trail Stop-Loss ",instrumentToken);
+		OrderRequestDTO dto=new OrderRequestDTO();
+		dto.setInstrumentToken(instrumentToken);
+		dto.setUserId("XS2241");
+		dto.setTransactionType("Sell");
+		dto.setQuantity(80);
+		dto.setTag("TrailST");
+		dto.setPrice(cacheMaxTrailStopLoss.get(instrumentToken).doubleValue());
+		return placeOrder(dto);
+	}
+	
+	
 	/** Place order. */
 	public Order placeOrder(OrderRequestDTO tradeRequest) {
-		/**
-		 * Place order method requires a orderParams argument which contains,
-		 * tradingsymbol, exchange, transaction_type, order_type, quantity, product,
-		 * price, trigger_price, disclosed_quantity, validity squareoff_value,
-		 * stoploss_value, trailing_stoploss and variety (value can be regular, bo, co,
-		 * amo) place order will return order model which will have only orderId in the
-		 * order model
-		 *
-		 * Following is an example param for LIMIT order, if a call fails then
-		 * KiteException will have error message in it Success of this call implies only
-		 * order has been placed successfully, not order execution.
-		 */
-
-		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite$$$$$$$$$$$ "
-				+ tradeRequest.toString());
-
-		boolean statusFlag = false;
-		int ctr = 0;
-		while (!statusFlag) {
-
+		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite$$$$$$$$$$$ "+ tradeRequest.toString());
 			KiteConnect kiteConnect;
 			try {
 				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
@@ -235,9 +239,12 @@ public class KiteConnectService {
 					orderParams.product = Constants.PRODUCT_MIS;
 					orderParams.exchange = Constants.EXCHANGE_NFO;
 					orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+					if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+		            	this.cacheMaxTrailStopLoss.put(tradeRequest.getInstrumentToken(), tradeRequest.getPrice());
+
+					}
 					orderParams.validity = Constants.VALIDITY_DAY;
 					orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
-																// and only alphanumeric is allowed
 					Order order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 					checkOrderStatus(tradeRequest,order);
 					return order;
@@ -247,21 +254,77 @@ public class KiteConnectService {
 				}
 
 			} catch (JSONException | IOException | KiteException e) {
-				// TODO Auto-generated catch block
-				// Invoke Naresh Ji's Service Ji
-				if (ctr > 3) {
-					// TODO Implementation need to be done here throw custom exception
-				}
-				ctr++;
+				
 				e.printStackTrace();
 			}
-		}
 		return null;
 
+	}
+	
+	/** Place bracket order. */
+	public Order placeBracketOrder(OrderRequestDTO tradeRequest){
+		/**
+		 * Bracket order:- following is example param for bracket order*
+		 * trailing_stoploss and stoploss_value are points and not tick or price
+		 */
+		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Bracket Order in Kite$$$$$$$$$$$ "+ tradeRequest.toString());
+		try {
+		KiteConnect kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+		OrderParams orderParams = new OrderParams();
+		InstrumentModel instrumentList = instrumentRepository
+				.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+		int lot_size = instrumentList.getLot_size();
+		int quantity = tradeRequest.getQuantity();
+		if (quantity % lot_size == 0 && kiteConnect != null) {
+			
+		}
+		double lastTradedPrice=this.cacheLastTradedPrice.get(tradeRequest.getInstrumentToken());
+		orderParams.quantity = 160;
+		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
+		orderParams.price = lastTradedPrice+.5;
+		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
+		orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+		orderParams.trailingStoploss = 1.0;
+		orderParams.stoploss = 5.0;
+		orderParams.exchange = Constants.EXCHANGE_NSE;
+		orderParams.validity = Constants.VALIDITY_DAY;
+		orderParams.squareoff = this.cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+200;
+		orderParams.product = Constants.PRODUCT_MIS;
+		Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
+		System.out.println(order10.orderId);
+		checkOrderStatus(tradeRequest,order10);
+		return order10;
+
+		} catch (JSONException | IOException | KiteException e) {
+			
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	private void checkOrderStatus(OrderRequestDTO tradeRequest, Order order)
 			throws KiteException, IOException {
+		/*if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+			cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+			OrderResponse data=new OrderResponse();
+			data.setAccountId("ystdys");
+			data.setTransactionType(tradeRequest.getTransactionType());
+			data.setPrice(""+tradeRequest.getPrice());
+			data.setTag(tradeRequest.getTag());
+			data.setInstrumentToken(tradeRequest.getInstrumentToken());
+			orderResponseRepository.save(data);
+			
+		}else if(tradeRequest.getTransactionType().equalsIgnoreCase("Sell")) {
+			OrderResponse data=new OrderResponse();
+			data.setAccountId("ystdys");
+			data.setTransactionType(tradeRequest.getTransactionType());
+			data.setPrice(""+tradeRequest.getPrice());
+			data.setTag(tradeRequest.getTag());
+			data.setInstrumentToken(tradeRequest.getInstrumentToken());
+			cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+			orderResponseRepository.save(data);
+		}*/
+		
 		List<Order> orderList = getOrder(tradeRequest.getUserId(), tradeRequest.getRequestToken(), order.orderId);
 		if (orderList != null && orderList.size() > 0) {
 			for (Order order2 : orderList) {
@@ -279,7 +342,6 @@ public class KiteConnectService {
 			}
 		}
 	}
-
 	/** Modify order. */
 	public Order modifyOrder(OrderRequestDTO tradeRequest) throws KiteException, IOException {
 		// Order modify request will return order model which will contain only
@@ -353,28 +415,7 @@ public class KiteConnectService {
 
 	}
 
-	/** Place bracket order. */
-	public void placeBracketOrder(OrderRequestDTO tradeRequest) throws KiteException, IOException {
-		/**
-		 * Bracket order:- following is example param for bracket order*
-		 * trailing_stoploss and stoploss_value are points and not tick or price
-		 */
-		KiteConnect kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
-		OrderParams orderParams = new OrderParams();
-		orderParams.quantity = 1;
-		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
-		orderParams.price = 30.5;
-		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.tradingsymbol = "SOUTHBANK";
-		orderParams.trailingStoploss = 1.0;
-		orderParams.stoploss = 2.0;
-		orderParams.exchange = Constants.EXCHANGE_NSE;
-		orderParams.validity = Constants.VALIDITY_DAY;
-		orderParams.squareoff = 3.0;
-		orderParams.product = Constants.PRODUCT_MIS;
-		Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
-		System.out.println(order10.orderId);
-	}
+	
 
 	/** Place cover order. */
 	public void placeCoverOrder(KiteConnect kiteConnect) throws KiteException, IOException {
@@ -673,25 +714,24 @@ public class KiteConnectService {
 				// handle here.
 			}
 		});
-
 		tickerProvider.setOnTickerArrivalListener(new OnTicks() {
 			@Override
 			public void onTicks(ArrayList<Tick> ticks) {
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
-					for (int i = 0; i < ticks.size(); i++) {
-						String newJson = new Gson().toJson(ticks.get(i));
-						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(ticks.get(i));
+					for(Tick tick :ticks) { 
+						String newJson = new Gson().toJson(tick);
+						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(tick);
 						LOGGER.info(tickz.toString());
 						customTickBarList.addTick(tickz);
 						repository.saveTickData(tickz);
-						if (cacheLatestTick != null) {
-							cacheLatestTick.put(ticks.get(i).getInstrumentToken(), ticks.get(i));
-							// LOGGER.info("Cached Tick Instument Token: "+
-							// cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+"
-							// Last Traded Price: "+
-							// cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getLastTradedPrice());
-						}
+						cacheLatestTick.put(tick.getInstrumentToken(), tick);
+						cacheLatestTick.put(tick.getInstrumentToken(),tick);
+						cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
 						kafkaTemplate.send(tickProducerTopic, newJson);
+						/*
+						if(breakDown(tick.getInstrumentToken(),tick)) {
+							sellOrderTrailStopLoss(tick.getInstrumentToken());
+						}*/
 					}
 				}
 			}
@@ -705,6 +745,39 @@ public class KiteConnectService {
 		tickerProvider.setMode(tokens, KiteTicker.modeFull);
 	}
 
+	private boolean breakDown(final Long instrument, Tick latestTick) {
+        if (cacheTradeOrder.containsKey(instrument)) {
+        	
+        	Double maxTrailStopLoss = this.cacheMaxTrailStopLoss.get(instrument);
+        	if(this.cacheMaxTrailStopLoss.containsKey(instrument) && this.cacheMaxTrailStopLoss.get(instrument)> latestTick.getClosePrice()) {
+            	// do nothing 
+            }else {
+            	LOGGER.info("instrument: "+ instrument+ " Latest Close Price: "+ latestTick.getClosePrice());
+            	this.cacheMaxTrailStopLoss.put(instrument, latestTick.getClosePrice());
+            	// todo temarery 
+            }
+            if ( maxTrailStopLoss != null) {
+                double breakDownMargin = maxTrailStopLoss * 5 / 100;
+                if (breakDownMargin < maxTrailStopLoss - latestTick.getClosePrice()) {
+                	LOGGER.info("instrument: "+ instrument+ " breakDownMargin: "+ breakDownMargin+" maxTrailStopLoss: "+maxTrailStopLoss+" latestTick.getClosePrice(): "+latestTick.getClosePrice());
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                LOGGER.error(" latestTick {} : or maxTrailStopLoss {} is null for  instrument {}", latestTick,
+                		maxTrailStopLoss, instrument);
+                return false;
+            }
+            
+        } else {
+            LOGGER.debug(" instrument {} did not have position", instrument);
+            return false;
+        }
+        
+        
+    }
+	
 	public boolean calculateTrailingStopLoss(long instrumentToken, Tick tick) {
 
 		return false;
@@ -781,6 +854,20 @@ public class KiteConnectService {
 							LOGGER.info("Got data: " + tick.toString());
 							customTickBarList.backTest(tickz);
 							repository.saveTickData(tickz);
+							
+							repository.saveTickData(tickz);
+							cacheLatestTick.put(tick.getInstrumentToken(), tick);
+								// LOGGER.info("Cached Tick Instument Token: "+
+								// cacheLatestTick.get(ticks.get(i).getInstrumentToken()).getInstrumentToken()+"
+								// Last Traded Price: "+
+							cacheLatestTick.put(tick.getInstrumentToken(),tick);
+							cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
+							if(breakDown(tick.getInstrumentToken(),tick)) {
+								sellOrderTrailStopLoss(tick.getInstrumentToken());
+							}
+							
+							
+							
 							Thread.sleep(300);
 							if (this.cacheLatestTick != null) {
 								this.cacheLatestTick.put(tick.getInstrumentToken(), tick);
@@ -899,4 +986,6 @@ public class KiteConnectService {
 		return response;
 
 	}
+	
+	
 }
