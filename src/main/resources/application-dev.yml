@@ -7,7 +7,6 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
     consumer:
-      topic-kite-tick: topic-kite-tick
       topic-kite-tradeorder: topic-kite-tradeorder
       auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -17,7 +16,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      topic-kite-tick: topic-kite-tick
       topic-kite-tradeorder: topic-kite-tradeorder
       topic-data-seriesupdate: topic-data-seriesupdate
       

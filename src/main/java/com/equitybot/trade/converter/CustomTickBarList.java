@@ -52,21 +52,19 @@ public class CustomTickBarList {
 	IgniteConfig igniteConfig;
 
 	IgniteCache<String, TimeSeries> cache;
-	private IgniteCache<Long, Double> cacheLastTradedPrice;
 
 	public CustomTickBarList() {
 		this.workingTickBarMap = new HashMap<>();
 		this.timeSeriesMap = new HashMap<>();
 		
 		CacheConfiguration<String, TimeSeries> ccfg = new CacheConfiguration<String, TimeSeries>("TimeSeriesCache");
-		CacheConfiguration<Long, Double> ccfgLastTradedPrice = new CacheConfiguration<Long, Double>("LastTradedPrice");
 		cache = igniteConfig.getInstance().getOrCreateCache(ccfg);
-		cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgLastTradedPrice);
 	}
 
 	public synchronized void addTick(Tick tick) {
 		CustomTickBar customTickBar = workingTickBarMap.get(tick.getInstrumentToken());
 		if (customTickBar == null) {
+			logger.info("Each Bar Size in: "+ this.eachBarSize);
 			customTickBar = new CustomTickBar(tick.getInstrumentToken(), this.eachBarSize);
 			workingTickBarMap.put(tick.getInstrumentToken(), customTickBar);
 		}
@@ -90,19 +88,19 @@ public class CustomTickBarList {
 				Decimal.valueOf(customTickBar.getClosePrice()), Decimal.valueOf(customTickBar.getVolume()),
 				Decimal.valueOf(customTickBar.getVolume()));
 		bar.addTrade(customTickBar.getVolume(), customTickBar.getClosePrice());
-		logger.info(bar.toString());
 		TimeSeries timeSeries = this.timeSeriesMap.get(customTickBar.getInstrumentToken());
 		if (timeSeries == null) {
 			timeSeries = new BaseTimeSeries(String.valueOf(customTickBar.getInstrumentToken()));
 			this.timeSeriesMap.put(customTickBar.getInstrumentToken(), timeSeries);
 		}
 		timeSeries.addBar(bar);
+		logger.info("Bar Count in series: "+timeSeries.getBarCount());
 		cache.put(timeSeries.getName(), timeSeries);
 		ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(timeSeriesProducerTopic,timeSeries.getName());
 		future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 			@Override
 			public void onSuccess(SendResult<String, String> result) {
-				//logger.info("Sent message: " + result);
+				logger.info("Sent message: " + result);
 			}
 
 			@Override
@@ -160,11 +158,4 @@ public class CustomTickBarList {
 
 	}
 
-	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
-		return cacheLastTradedPrice;
-	}
-
-	public void setCacheLastTradedPrice(IgniteCache<Long, Double> cacheLastTradedPrice) {
-		this.cacheLastTradedPrice = cacheLastTradedPrice;
-	}
 }

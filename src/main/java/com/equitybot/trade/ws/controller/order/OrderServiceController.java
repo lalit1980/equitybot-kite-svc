@@ -39,8 +39,8 @@ public class OrderServiceController {
 	KiteConnectService kiteConnectService;
 
 	@PostMapping("/tradeorder/v1.0/")
-	public OrderResponse placeOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
-		return buyOrderService.buyOrder(orderRequestDTO);
+	public void placeOrder(@RequestBody OrderRequestDTO orderRequestDTO) {
+		 buyOrderService.buyOrder(orderRequestDTO);
 	}
 
 	@GetMapping("/tradeorder/v1.0/orderId/{orderId}")

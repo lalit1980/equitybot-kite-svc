@@ -7,7 +7,6 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKASERVERS}
     consumer:
-      topic-kite-tick: ${KITETICKDATAPUBLISH}
       topic-kite-tradeorder: ${KITETRADEORDERPUBLISH}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -17,7 +16,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      topic-kite-tick: ${KITETICKDATAPUBLISH}
       topic-kite-tradeorder: ${KITETRADEORDERPUBLISH}
       topic-data-seriesupdate: ${ALGOSERIESUPDATETOPIC}
       
