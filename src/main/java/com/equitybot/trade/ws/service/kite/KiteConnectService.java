@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -74,11 +77,11 @@ public class KiteConnectService {
 	private IgniteCache<Long, Double> cacheLastTradedPrice;
 	private IgniteCache<Long, String> cacheTradeOrder;
 	private IgniteCache<Long, Tick> cacheLatestTick;
-	private IgniteCache<String, Double> cacheAvailableFund;
 	private IgniteCache<Long, Double> cachePurchasedPrice;
 	private IgniteCache<Long, Double> cacheMaxTrailStopLoss;
 	private IgniteCache<Long, Boolean> cacheTrailStopLossSignal;
-	private IgniteCache<Long, Double> cacheTotalProfit;
+	
+	private IgniteCache<Long, Instrument> cacheInstrument;
  
 
 	@Autowired
@@ -126,28 +129,55 @@ public class KiteConnectService {
 	public KiteConnectService() {
 
 		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfg.setCacheMode(CacheMode.PARTITIONED);
+		ccfg.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfg.setDataRegionName("1GB_Region");
 		this.cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfg);
 
 		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
+		ccfgOrderDetails.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgOrderDetails.setCacheMode(CacheMode.PARTITIONED);
+		ccfgOrderDetails.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgOrderDetails.setDataRegionName("1GB_Region");
 		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
 
 		CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<Long, Tick>("CachedLatestTick");
+		ccfgLatestTickParams.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgLatestTickParams.setCacheMode(CacheMode.PARTITIONED);
+		ccfgLatestTickParams.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgLatestTickParams.setDataRegionName("1GB_Region");
 		this.cacheLatestTick = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
 
-		CacheConfiguration<String, Double> ccfgCacheAvailableFund = new CacheConfiguration<String, Double>("CacheAvailableFund");
-		this.cacheAvailableFund = igniteConfig.getInstance().getOrCreateCache(ccfgCacheAvailableFund);
 		
 		CacheConfiguration<Long, Double> ccfgCachePurchasedPrice = new CacheConfiguration<Long, Double>("CachePurchasedPrice");
+		ccfgCachePurchasedPrice.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgCachePurchasedPrice.setCacheMode(CacheMode.PARTITIONED);
+		ccfgCachePurchasedPrice.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgCachePurchasedPrice.setDataRegionName("1GB_Region");
 		this.cachePurchasedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgCachePurchasedPrice);
 		
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
+		ccfgcacheMaxTrailStopLoss.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheMaxTrailStopLoss.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheMaxTrailStopLoss.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheMaxTrailStopLoss.setDataRegionName("1GB_Region");
 		this.cacheMaxTrailStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcacheMaxTrailStopLoss);
 		
 		CacheConfiguration<Long, Boolean> ccfgcacheTrailStopLossSignal = new CacheConfiguration<Long, Boolean>("CacheTrailStopLossSignal");
+		ccfgcacheTrailStopLossSignal.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheTrailStopLossSignal.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheTrailStopLossSignal.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheTrailStopLossSignal.setDataRegionName("1GB_Region");
 		this.cacheTrailStopLossSignal = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTrailStopLossSignal);
 		
-		 CacheConfiguration<Long, Double> ccfgcacheTotalProfit = new CacheConfiguration<Long, Double>("CacheTotalProfit");
-	     this.cacheTotalProfit = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTotalProfit);
+		
+		CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>("CacheInstrument");
+		ccfgcacheInstrument.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheInstrument.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheInstrument.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheInstrument.setDataRegionName("1GB_Region");
+		this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
 		
 		
 		
@@ -209,14 +239,13 @@ public class KiteConnectService {
 	
 	/** Place order. */
 	public Order placeOrder(OrderRequestDTO tradeRequest) {
-		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite $$$$$$$$$$$ "+ tradeRequest.toString());
+		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite $$$$$$$$$$$ "+ tradeRequest.getTradingsymbol()+" Order Type: "+tradeRequest.getTransactionType());
 			KiteConnect kiteConnect;
 			try {
-				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 				OrderParams orderParams = new OrderParams();
 				InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-					orderParams.quantity = instrument.getLot_size()*5;
+					orderParams.quantity = instrument.getLot_size()*2;
 					orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 					orderParams.tradingsymbol = instrument.getTradingSymbol();
 					orderParams.product = Constants.PRODUCT_MIS;
@@ -227,11 +256,12 @@ public class KiteConnectService {
 					orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
 					Order order=null;
 					if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+						LOGGER.info("Placing buy order... "+ tradeRequest.getTradingsymbol() +" at price: "+cacheLastTradedPrice.get(instrument.getInstrumentToken()));
 						cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
 						order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 					}
-					if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell")) {
-						LOGGER.info("Placing sell order... "+tradeRequest.getInstrumentToken());
+					if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.get(instrument.getInstrumentToken()).equalsIgnoreCase("Buy")) {
+						LOGGER.info("Placing sell order... "+ tradeRequest.getTradingsymbol() +" at price: "+cacheLastTradedPrice.get(instrument.getInstrumentToken()));
 						order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 					}
 					checkOrderStatus(tradeRequest,order);
@@ -250,7 +280,8 @@ public class KiteConnectService {
 			List<Order> orderList = getOrder(tradeRequest.getUserId(), tradeRequest.getRequestToken(), order.orderId);
 			if (orderList != null && orderList.size() > 0) {
 				for (Order order2 : orderList) {
-					//OrderResponse result = convertOrderResponse(order2, tradeRequest);
+					OrderResponse result = convertOrderResponse(order2, tradeRequest);
+					orderResponseRepository.save(result);
 					if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Buy") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
 					} else if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
@@ -285,7 +316,7 @@ public class KiteConnectService {
 	        if(currentPrice<=stopLossLimit) {
 	        	this.cacheTrailStopLossSignal.put(instrumentToken, true);
 	        	OrderRequestDTO tradeRequest=new OrderRequestDTO();
-	        	tradeRequest.setUserId("XS2241");
+	        	tradeRequest.setUserId("WU6870");
 	        	tradeRequest.setInstrumentToken(instrumentToken);
 	        	tradeRequest.setTransactionType("Sell");
 	        	tradeRequest.setTag("TrailST");
@@ -304,68 +335,7 @@ public class KiteConnectService {
 		
     }
 	
-	/* 
-	public void placeMockOrder(OrderRequestDTO tradeRequest) {
-		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Mock Trade Order in Kite$$$$$$$$$$$ "+ tradeRequest.toString());
-			KiteConnect kiteConnect;
-			try {
-				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
-				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
-				OrderParams orderParams = new OrderParams();
-				InstrumentModel instrumentList = instrumentRepository
-						.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-					orderParams.quantity = instrumentList.getLot_size()*2;
-					orderParams.orderType = Constants.ORDER_TYPE_MARKET;
-					orderParams.tradingsymbol = instrumentList.getTradingSymbol();
-					orderParams.product = Constants.PRODUCT_MIS;
-					orderParams.exchange = Constants.EXCHANGE_NFO;
-					orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-					
-					orderParams.validity = Constants.VALIDITY_DAY;
-					orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
-						if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
-							cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrumentList.getInstrumentToken()));
-							Order order=new Order();
-							order.status="Complete";
-							order.orderId=UUID.randomUUID().toString();
-							order.transactionType=tradeRequest.getTransactionType().toUpperCase();
-							mockCheckOrderStatus(tradeRequest,order);
-						}
-					if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell")) {
-						if(this.cacheTrailStopLossSignal.get(instrumentList.getInstrumentToken())) {
-							Order order=new Order();
-							order.status="Complete";
-							order.orderId=UUID.randomUUID().toString();
-							order.transactionType=tradeRequest.getTransactionType().toUpperCase();
-						}else {
-							LOGGER.info("******************* Gaand mara nahi bechta maaa chuda apni******************* at price: "+tradeRequest.getPrice());
-						}
-					}
-					
-			} catch (JSONException | IOException | KiteException e) {
-				
-				e.printStackTrace();
-			}
-
-	}
-	private void mockCheckOrderStatus(OrderRequestDTO tradeRequest, Order order) throws KiteException, IOException {
-		List<Order> orderList = new ArrayList<Order>();
-		orderList.add(order);
-		if (orderList != null && orderList.size() > 0) {
-			for (Order order2 : orderList) {
-				OrderResponse result = convertOrderResponse(order2, tradeRequest);
-				orderResponseRepository.save(result);
-				if (order2 != null && order2.transactionType.equalsIgnoreCase("Buy") && order2.status.equalsIgnoreCase("Complete")) {
-					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
-					double availableMargin=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
-					cacheAvailableFund.put(tradeRequest.getUserId(), availableMargin);
-				} else if (order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
-					cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
-				}
-			}
-		}
-	}
-	*/
+	
 	
 	/** Place bracket order. */
 	public Order placeBracketOrder(OrderRequestDTO tradeRequest){
@@ -995,6 +965,14 @@ public class KiteConnectService {
 		response.setValidity(order2.validity);
 		return response;
 
+	}
+
+	public IgniteCache<Long, Instrument> getCacheInstrument() {
+		return cacheInstrument;
+	}
+
+	public void setCacheInstrument(IgniteCache<Long, Instrument> cacheInstrument) {
+		this.cacheInstrument = cacheInstrument;
 	}
 	
 	

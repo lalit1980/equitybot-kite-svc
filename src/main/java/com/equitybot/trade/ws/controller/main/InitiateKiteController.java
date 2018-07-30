@@ -7,6 +7,9 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,7 @@ import com.equitybot.trade.ws.service.kite.KiteConnectService;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
+import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Tick;
 
 @RestController
@@ -36,12 +40,28 @@ public class InitiateKiteController {
 	
 	private IgniteCache<Long, Double> cacheMaxTrailStopLoss;
 	private IgniteCache<Long, Boolean> cacheTrailStopLossSignal;
+	private IgniteCache<Long, Instrument> cacheInstrument;
 	public InitiateKiteController() {
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
+		ccfgcacheMaxTrailStopLoss.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheMaxTrailStopLoss.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheMaxTrailStopLoss.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheMaxTrailStopLoss.setDataRegionName("1GB_Region");
 		this.cacheMaxTrailStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcacheMaxTrailStopLoss);
 		
 		CacheConfiguration<Long, Boolean> ccfgcacheTrailStopLossSignal = new CacheConfiguration<Long, Boolean>("CacheTrailStopLossSignal");
+		ccfgcacheTrailStopLossSignal.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheTrailStopLossSignal.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheTrailStopLossSignal.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheTrailStopLossSignal.setDataRegionName("1GB_Region");
 		this.cacheTrailStopLossSignal = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTrailStopLossSignal);
+		
+		CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>("CacheInstrument");
+		ccfgcacheInstrument.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+		ccfgcacheInstrument.setCacheMode(CacheMode.PARTITIONED);
+		ccfgcacheInstrument.setRebalanceMode(CacheRebalanceMode.NONE);
+		ccfgcacheInstrument.setDataRegionName("1GB_Region");
+		this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
 	}
 	
 	
@@ -63,6 +83,12 @@ public class InitiateKiteController {
 			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) {
 		try {
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken);
+			List<Instrument> list=tradePortZerodhaConnect.getAllInstruments(kiteconnect);
+			if(list!=null && list.size()>0) {
+				for (Instrument instrument : list) {
+					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
+				}
+			}
 			if(instrumentTokens!=null && instrumentTokens.size()>0) {
 				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
 					Long long1 = (Long) iterator.next();
@@ -83,6 +109,15 @@ public class InitiateKiteController {
 			@RequestBody ArrayList<Long> instrumentTokens) {
 
 		try {
+			
+			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken);
+			List<Instrument> list=tradePortZerodhaConnect.getAllInstruments(kiteconnect);
+			if(list!=null && list.size()>0) {
+				for (Instrument instrument : list) {
+					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
+				}
+			}
+			
 			if(instrumentTokens!=null && instrumentTokens.size()>0) {
 				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
 					Long long1 = (Long) iterator.next();
@@ -90,9 +125,7 @@ public class InitiateKiteController {
 					this.cacheTrailStopLossSignal.put(long1, false);
 				}
 			}
-			
-			tradePortZerodhaConnect.tickerUsage(tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken),
-					instrumentTokens);
+			tradePortZerodhaConnect.tickerUsage(kiteconnect,instrumentTokens);
 		} catch (IOException | WebSocketException | KiteException e) {
 			e.printStackTrace();
 		}
