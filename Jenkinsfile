@@ -9,7 +9,7 @@ podTemplate(label: 'builder',
             volumes: [
                     hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
                     secretVolume(secretName: 'maven-settings', mountPath: '/root/.m2'),
-                    secretVolume(secretName: 'kubeconfig', mountPath: '/root/.kube'),
+                    secretVolume(secretName: 'kube-config', mountPath: '/root/.kube'),
                     persistentVolumeClaim(claimName: 'mavenrepo-volume-claim', mountPath: '/root/.m2nrepo')
             ]) 
             {
