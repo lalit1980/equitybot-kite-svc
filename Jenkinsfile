@@ -1,7 +1,7 @@
 
 podTemplate(label: 'builder',
             containers: [
-                    containerTemplate(name: 'jnlp', image: 'larribas/jenkins-jnlp-slave-with-ssh:1.0.0', args: '${computer.jnlpmac} ${computer.name}'),
+                    containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave', ttyEnabled: true, command: 'cat'),
                     containerTemplate(name: 'docker', image: 'docker', ttyEnabled: true, command: 'cat',
                             envVars: [containerEnvVar(key: 'DOCKER_CONFIG', value: '/tmp/'),]),
                     containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.8', command: 'cat', ttyEnabled: true),
