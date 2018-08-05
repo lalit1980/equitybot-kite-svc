@@ -22,49 +22,40 @@ public class OrderReceiverListener {
 
 	@Value("${spring.kafka.bootstrap-servers}")
 	private String bootstrapServers;
-	
+
 	@Autowired
 	private IBuyOrder buyOrderService;
-	
+
 	@Autowired
 	private ISellOrder sellOrderService;
-/*
-	@KafkaListener(topicPartitions = {
-			@TopicPartition(topic = "topic-kite-tradeorder", partitions = { "0" }) })
+
+	@KafkaListener(topicPartitions = { @TopicPartition(topic = "topic-kite-tradeorder", partitions = { "0" }) })
 	public void listenPartition0(ConsumerRecord<?, ?> record) throws IOException {
 		Gson gson = new Gson();
-		OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
+		OrderRequestDTO tradeBO = gson.fromJson(record.value().toString(), OrderRequestDTO.class);
 		placeTradeOrder(tradeBO);
 	}
-*/
-	 @KafkaListener(topicPartitions = {@TopicPartition(topic = "topic-kite-tradeorder", partitions = {"0"})})
-	    public void listenPartition0(ConsumerRecord<?, ?> record) throws IOException {
-		 Gson gson = new Gson();
-			OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
-			placeTradeOrder(tradeBO);
-	    }
 
-	    @KafkaListener(topicPartitions = {@TopicPartition(topic = "topic-kite-tradeorder", partitions = {"1"})})
-	    public void listenPartition1(ConsumerRecord<?, ?> record) throws IOException {
-	    	Gson gson = new Gson();
-			OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
-			placeTradeOrder(tradeBO);
-	    }
+	@KafkaListener(topicPartitions = { @TopicPartition(topic = "topic-kite-tradeorder", partitions = { "1" }) })
+	public void listenPartition1(ConsumerRecord<?, ?> record) throws IOException {
+		Gson gson = new Gson();
+		OrderRequestDTO tradeBO = gson.fromJson(record.value().toString(), OrderRequestDTO.class);
+		placeTradeOrder(tradeBO);
+	}
 
-	    @KafkaListener(topicPartitions = {@TopicPartition(topic = "topic-kite-tradeorder", partitions = {"2"})})
-	    public void listenPartition2(ConsumerRecord<?, ?> record) throws IOException {
-	    	Gson gson = new Gson();
-			OrderRequestDTO tradeBO= gson.fromJson(record.value().toString(), OrderRequestDTO.class);
-			placeTradeOrder(tradeBO);
-	    }
-	
+	@KafkaListener(topicPartitions = { @TopicPartition(topic = "topic-kite-tradeorder", partitions = { "2" }) })
+	public void listenPartition2(ConsumerRecord<?, ?> record) throws IOException {
+		Gson gson = new Gson();
+		OrderRequestDTO tradeBO = gson.fromJson(record.value().toString(), OrderRequestDTO.class);
+		placeTradeOrder(tradeBO);
+	}
+
 	public void placeTradeOrder(OrderRequestDTO tradeBO) {
-		logger.info("Received Trade Order: "+tradeBO.toString() );
-		if(tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {
+		if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {
 			buyOrderService.buyOrder(tradeBO);
-		}else if(tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_SELL)) {
+		} else if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_SELL)) {
 			sellOrderService.sellOrder(tradeBO);
 		}
 	}
-	
+
 }

@@ -26,7 +26,7 @@ public class KiteProperty {
 	private String refresh_token;
 	private String password;
 	private double stopLoss;
-	private double trailStopLoss;
+	private int quantity;
 	private Map<String, String> secretQuestions=new HashMap<String, String>();
 	public String getApiKey() {
 		return apiKey;
@@ -109,14 +109,6 @@ public class KiteProperty {
 		this.secretQuestions = secretQuestions;
 	}
 
-	@Override
-	public String toString() {
-		return "KiteProperty [id=" + id + ", apiKey=" + apiKey + ", userId=" + userId + ", requestToken=" + requestToken
-				+ ", apiSecret=" + apiSecret + ", public_token=" + public_token + ", access_token=" + access_token
-				+ ", refresh_token=" + refresh_token + ", password=" + password + ", secretQuestions=" + secretQuestions
-				+ "]";
-	}
-
 	public double getStopLoss() {
 		return stopLoss;
 	}
@@ -125,12 +117,22 @@ public class KiteProperty {
 		this.stopLoss = stopLoss;
 	}
 
-	public double getTrailStopLoss() {
-		return trailStopLoss;
+	public int getQuantity() {
+		return quantity;
 	}
 
-	public void setTrailStopLoss(double trailStopLoss) {
-		this.trailStopLoss = trailStopLoss;
+	public void setQuantity(int quantity) {
+		this.quantity = quantity;
 	}
+
+	@Override
+	public String toString() {
+		return "KiteProperty [id=" + id + ", apiKey=" + apiKey + ", userId=" + userId + ", requestToken=" + requestToken
+				+ ", apiSecret=" + apiSecret + ", public_token=" + public_token + ", access_token=" + access_token
+				+ ", refresh_token=" + refresh_token + ", password=" + password + ", stopLoss=" + stopLoss
+				+ ", quantity=" + quantity + ", secretQuestions=" + secretQuestions + "]";
+	}
+
+	
 
 }

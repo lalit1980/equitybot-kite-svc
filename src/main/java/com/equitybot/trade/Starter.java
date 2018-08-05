@@ -23,6 +23,17 @@ public class Starter {
 	}
 	
 	@Bean
+	public Docket swaggerGeneralPropertyApi10() {
+		return new Docket(DocumentationType.SWAGGER_2)
+				.groupName("general-property-api-1.0")
+				.select()
+					.apis(RequestHandlerSelectors.basePackage("com.equitybot.trade.general.controller"))
+					.paths(regex("/api/general/v1.0.*"))
+				.build()
+				.apiInfo(new ApiInfoBuilder().version("1.0").title("General Property API").description("Documentation General Property API v1.0").build());
+	}
+	
+	@Bean
 	public Docket swaggerPropertyApi10() {
 		return new Docket(DocumentationType.SWAGGER_2)
 				.groupName("property-api-1.0")

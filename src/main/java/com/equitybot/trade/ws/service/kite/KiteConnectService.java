@@ -10,9 +10,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,21 +19,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-import org.ta4j.core.Decimal;
 
 import com.equitybot.trade.converter.CustomTickBarList;
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
 import com.equitybot.trade.db.mongodb.order.domain.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
+import com.equitybot.trade.db.mongodb.order.domain.TrailStopLossResponse;
 import com.equitybot.trade.db.mongodb.order.repository.OrderResponseRepository;
+import com.equitybot.trade.db.mongodb.order.repository.TrailStopLossRepository;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.db.mongodb.tick.repository.TickRepository;
 import com.equitybot.trade.ignite.configs.IgniteConfig;
 import com.equitybot.trade.util.DateFormatUtil;
 import com.equitybot.trade.util.TickSerializer;
-import com.google.gson.Gson;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.SessionExpiryHook;
@@ -73,16 +70,23 @@ public class KiteConnectService {
 
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
-
+	
+	@Value("${trailStopLossFeature}")
+	private String trailStopLossFeature;
+	
 	private IgniteCache<Long, Double> cacheLastTradedPrice;
 	private IgniteCache<Long, String> cacheTradeOrder;
 	private IgniteCache<Long, Tick> cacheLatestTick;
+	private IgniteCache<String, Double> cacheAvailableFund;
 	private IgniteCache<Long, Double> cachePurchasedPrice;
 	private IgniteCache<Long, Double> cacheMaxTrailStopLoss;
-	private IgniteCache<Long, Boolean> cacheTrailStopLossSignal;
-	
+	//private IgniteCache<Long, Boolean> cacheTrailStopLossSignal;
+	private IgniteCache<Long, Double> cacheTotalProfit;
+	private IgniteCache<String, Double> cacheStopLoss;
+	private IgniteCache<String, Integer> cacheQuantity;
 	private IgniteCache<Long, Instrument> cacheInstrument;
- 
+	
+	private boolean backTestFlag;
 
 	@Autowired
 	private CustomTickBarList customTickBarList;
@@ -106,6 +110,9 @@ public class KiteConnectService {
 
 	@Autowired
 	OrderResponseRepository orderResponseRepository;
+	
+	@Autowired
+	TrailStopLossRepository trailStopLossRepository;
 
 	private List<KiteConnect> kiteSessionList = new ArrayList<KiteConnect>();
 
@@ -129,57 +136,39 @@ public class KiteConnectService {
 	public KiteConnectService() {
 
 		CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
-		ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfg.setCacheMode(CacheMode.PARTITIONED);
-		ccfg.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfg.setDataRegionName("1GB_Region");
 		this.cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfg);
 
 		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
-		ccfgOrderDetails.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgOrderDetails.setCacheMode(CacheMode.PARTITIONED);
-		ccfgOrderDetails.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgOrderDetails.setDataRegionName("1GB_Region");
 		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
 
 		CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<Long, Tick>("CachedLatestTick");
-		ccfgLatestTickParams.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgLatestTickParams.setCacheMode(CacheMode.PARTITIONED);
-		ccfgLatestTickParams.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgLatestTickParams.setDataRegionName("1GB_Region");
 		this.cacheLatestTick = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
 
+		CacheConfiguration<String, Double> ccfgCacheAvailableFund = new CacheConfiguration<String, Double>("CacheAvailableFund");
+		this.cacheAvailableFund = igniteConfig.getInstance().getOrCreateCache(ccfgCacheAvailableFund);
 		
 		CacheConfiguration<Long, Double> ccfgCachePurchasedPrice = new CacheConfiguration<Long, Double>("CachePurchasedPrice");
-		ccfgCachePurchasedPrice.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgCachePurchasedPrice.setCacheMode(CacheMode.PARTITIONED);
-		ccfgCachePurchasedPrice.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgCachePurchasedPrice.setDataRegionName("1GB_Region");
 		this.cachePurchasedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgCachePurchasedPrice);
 		
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
-		ccfgcacheMaxTrailStopLoss.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgcacheMaxTrailStopLoss.setCacheMode(CacheMode.PARTITIONED);
-		ccfgcacheMaxTrailStopLoss.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgcacheMaxTrailStopLoss.setDataRegionName("1GB_Region");
 		this.cacheMaxTrailStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcacheMaxTrailStopLoss);
 		
-		CacheConfiguration<Long, Boolean> ccfgcacheTrailStopLossSignal = new CacheConfiguration<Long, Boolean>("CacheTrailStopLossSignal");
-		ccfgcacheTrailStopLossSignal.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgcacheTrailStopLossSignal.setCacheMode(CacheMode.PARTITIONED);
-		ccfgcacheTrailStopLossSignal.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgcacheTrailStopLossSignal.setDataRegionName("1GB_Region");
-		this.cacheTrailStopLossSignal = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTrailStopLossSignal);
+		//CacheConfiguration<Long, Boolean> ccfgcacheTrailStopLossSignal = new CacheConfiguration<Long, Boolean>("CacheTrailStopLossSignal");
+		//this.cacheTrailStopLossSignal = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTrailStopLossSignal);
 		
+		 CacheConfiguration<Long, Double> ccfgcacheTotalProfit = new CacheConfiguration<Long, Double>("CacheTotalProfit");
+	     this.cacheTotalProfit = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTotalProfit);
+	     
+	     CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>("CacheInstrument");
+		 this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
+		 
+		 CacheConfiguration<String, Double> ccfgcStopLoss = new CacheConfiguration<String, Double>("CacheStopLoss");
+		 this.cacheStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcStopLoss);
+			
+		 CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
+		 this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
 		
-		CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>("CacheInstrument");
-		ccfgcacheInstrument.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfgcacheInstrument.setCacheMode(CacheMode.PARTITIONED);
-		ccfgcacheInstrument.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfgcacheInstrument.setDataRegionName("1GB_Region");
-		this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
-		
-		
+	     this.backTestFlag=false;
 		
 	}
 
@@ -239,33 +228,37 @@ public class KiteConnectService {
 	
 	/** Place order. */
 	public Order placeOrder(OrderRequestDTO tradeRequest) {
-		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Trade Order in Kite $$$$$$$$$$$ "+ tradeRequest.getTradingsymbol()+" Order Type: "+tradeRequest.getTransactionType());
+		LOGGER.info("Place Order Service: "+ tradeRequest.getTradingsymbol()+" Order Type: "+ tradeRequest.getTransactionType()+" Price: "+cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+" Tag: "+tradeRequest.getTag());
 			KiteConnect kiteConnect;
+			int quantity;
 			try {
+				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 				OrderParams orderParams = new OrderParams();
 				InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-					orderParams.quantity = instrument.getLot_size()*2;
-					orderParams.orderType = Constants.ORDER_TYPE_MARKET;
-					orderParams.tradingsymbol = instrument.getTradingSymbol();
-					orderParams.product = Constants.PRODUCT_MIS;
-					orderParams.exchange = Constants.EXCHANGE_NFO;
-					orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-					
-					orderParams.validity = Constants.VALIDITY_DAY;
-					orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
-					Order order=null;
-					if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
-						LOGGER.info("Placing buy order... "+ tradeRequest.getTradingsymbol() +" at price: "+cacheLastTradedPrice.get(instrument.getInstrumentToken()));
-						cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
-						order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-					}
-					if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.get(instrument.getInstrumentToken()).equalsIgnoreCase("Buy")) {
-						LOGGER.info("Placing sell order... "+ tradeRequest.getTradingsymbol() +" at price: "+cacheLastTradedPrice.get(instrument.getInstrumentToken()));
-						order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-					}
-					checkOrderStatus(tradeRequest,order);
-					return order;
+				quantity=this.cacheQuantity.get(cacheInstrument.get(instrument.getInstrumentToken()).getTradingsymbol());
+				if(quantity==0) {
+					quantity=2;
+				}
+				orderParams.quantity = instrument.getLot_size()* quantity;
+				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
+				orderParams.tradingsymbol = instrument.getTradingSymbol();
+				orderParams.product = Constants.PRODUCT_MIS;
+				orderParams.exchange = Constants.EXCHANGE_NFO;
+				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+				orderParams.validity = Constants.VALIDITY_DAY;
+				orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
+				Order order=null;
+				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
+					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+				}
+				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrumentToken())) {
+					LOGGER.info("Placing sell order... "+tradeRequest.getInstrumentToken());
+					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+				}
+				checkOrderStatus(tradeRequest,order);
+				return order;
 				
 
 			} catch (JSONException | IOException | KiteException e) {
@@ -281,14 +274,17 @@ public class KiteConnectService {
 			if (orderList != null && orderList.size() > 0) {
 				for (Order order2 : orderList) {
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
-					orderResponseRepository.save(result);
+					
 					if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Buy") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+						orderResponseRepository.save(result);
 					} else if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+						orderResponseRepository.save(result);
 					}else {
 						LOGGER.info("No order id matched......");
 					}
+					
 				}
 			}
 		}else {
@@ -299,12 +295,17 @@ public class KiteConnectService {
 	}
 	protected void calculateTrailStoLoss(long instrumentToken) {
 		if(this.cachePurchasedPrice!=null && this.cachePurchasedPrice.get(instrumentToken)!=null) {
+			double stopLoss=0.0;
 			double stopLossLimit=this.cacheMaxTrailStopLoss.get(instrumentToken);
 			double purcahsePrice=this.cachePurchasedPrice.get(instrumentToken);
 			//double stopLossDistance=5;
-			double stopLossDistance=((purcahsePrice*20)/100);
+			stopLoss=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
+			LOGGER.info("Stop Loss Value from Cache: "+stopLoss);
+			if(stopLoss<=0) {
+				stopLoss=20;
+			}
+			double stopLossDistance=((purcahsePrice*stopLoss)/100);
 			double currentPrice=this.cacheLastTradedPrice.get(instrumentToken);
-
 			if (stopLossLimit==0) {
 	            stopLossLimit = purcahsePrice-stopLossDistance;
 	        }
@@ -314,27 +315,172 @@ public class KiteConnectService {
 	            stopLossLimit = currentValue-stopLossDistance;
 	        }
 	        if(currentPrice<=stopLossLimit) {
-	        	this.cacheTrailStopLossSignal.put(instrumentToken, true);
 	        	OrderRequestDTO tradeRequest=new OrderRequestDTO();
-	        	tradeRequest.setUserId("WU6870");
+	        	tradeRequest.setUserId("XS2241");
 	        	tradeRequest.setInstrumentToken(instrumentToken);
 	        	tradeRequest.setTransactionType("Sell");
+	        	tradeRequest.setTradingsymbol(this.cacheInstrument.get(instrumentToken).getTradingsymbol());
 	        	tradeRequest.setTag("TrailST");
-	        	placeOrder(tradeRequest);
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, 0.0);
-	        	LOGGER.info("Stop Loss Hit Instrument Token: "+instrumentToken+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("Stop Loss Hit Instrument: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	if(isBackTestFlag()) {
+	        		LOGGER.info("Inside Trail Stop Loss Hit to place Mock sell order: ");
+	        		placeMockOrder(tradeRequest);
+	    		}else {
+	    			LOGGER.info("Inside Trail Stop Loss Hit to place actual sell order: ");
+	    			placeOrder(tradeRequest);
+	    		}
+	        	
 	        }else{
-	        	this.cacheTrailStopLossSignal.put(instrumentToken, false);
-	        	LOGGER.info("King Chutiye nahi bechta Instrument Token: "+instrumentToken+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("King Chutiye nahi bechta Instrument: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, stopLossLimit);
 	        }
 	        
 		}else {
 			LOGGER.info("Purchase price is null");
 		}
-		
     }
+	/*
+	public TrailStopLossResponse convertToTrailDataObj(long instrumentToken,Order order) {
+		TrailStopLossResponse obj=null;
+		if(order.transactionType.equalsIgnoreCase("Buy")) {
+			obj=new TrailStopLossResponse();
+			obj.setId(order.orderId);
+			obj.setInstrumentToken(instrumentToken);
+			obj.setTradingSymbol(order.tradingSymbol);
+			obj.setType(order.transactionType);
+			obj.setBuyPrice(this.cachePurchasedPrice.get(instrumentToken));
+			obj.setSellPrice(0.0);
+			obj.setBuyTransactionTime(DateFormatUtil.getCurrentISTTime(order.exchangeTimestamp));
+			obj.setBuyTransactionTime(null);
+			obj.setProfitAndLoss(0.0);
+			obj.setTotalProfitLoss(0.0);
+		}else {
+			obj=new TrailStopLossResponse();
+			obj.setId(order.orderId);
+			obj.setInstrumentToken(instrumentToken);
+			obj.setTradingSymbol(order.tradingSymbol);
+			obj.setType(order.transactionType);
+			obj.setBuyPrice(this.cachePurchasedPrice.get(instrumentToken));
+			obj.setSellPrice(Double.parseDouble(order.averagePrice));
+			obj.setBuyTransactionTime(DateFormatUtil.getCurrentISTTime(order.exchangeTimestamp));
+			obj.setBuyTransactionTime(null);
+			obj.setProfitAndLoss(Double.parseDouble(order.averagePrice)-this.cachePurchasedPrice.get(instrumentToken));
+			obj.setTotalProfitLoss(0.0);
+		}
+		return obj;
+	}*/
 	
+	public Order placeMockOrder(OrderRequestDTO tradeRequest) {
+		LOGGER.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Processing Mock Trade Order in Kite $$$$$$$$$$$ "+ tradeRequest.getTradingsymbol()+" Order Type: "+ tradeRequest.getTransactionType()+" Price: "+cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+" Tag: "+tradeRequest.getTag());
+		KiteConnect kiteConnect=null;
+		int quantity;
+		try {
+			kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+			OrderParams orderParams = new OrderParams();
+			InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
+			quantity=this.cacheQuantity.get(cacheInstrument.get(instrument.getInstrumentToken()).getTradingsymbol());
+			LOGGER.info("*****************Mock Test Quantity: "+quantity);
+			if(quantity==0) {
+				quantity=2;
+			}
+				orderParams.quantity = instrument.getLot_size()*quantity;
+				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
+				orderParams.tradingsymbol = instrument.getTradingSymbol();
+				orderParams.product = Constants.PRODUCT_MIS;
+				orderParams.exchange = Constants.EXCHANGE_NFO;
+				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
+				
+				orderParams.validity = Constants.VALIDITY_DAY;
+				orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
+				Order order=null;
+				
+				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
+					order=new Order();
+					order.exchangeOrderId="1400000006412993";
+					order.disclosedQuantity="0";
+					order.validity="Day";
+					order.tradingSymbol=instrument.getTradingSymbol();
+					order.orderVariety=Constants.VARIETY_REGULAR;
+					order.userId=tradeRequest.getUserId();
+					order.orderType=orderParams.orderType;
+					order.triggerPrice="0.0";
+					order.statusMessage="Mock Test Success";
+					order.price="0.0";
+					order.status="Complete";
+					order.product=orderParams.product;
+					order.accountId=tradeRequest.getUserId();
+					order.exchange=orderParams.exchange;
+					order.orderId=UUID.randomUUID().toString();
+					order.symbol="";
+					order.pendingQuantity="0.0";
+					order.orderTimestamp=new Date();
+					order.exchangeTimestamp=new Date();
+					order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrumentToken());
+					order.transactionType=orderParams.transactionType;
+					order.filledQuantity=""+orderParams.quantity;
+					order.parentOrderId="";
+					order.tag=tradeRequest.getTag();
+					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+					//TrailStopLossResponse data=convertToTrailDataObj(instrument.getInstrumentToken(), order);
+					//trailStopLossRepository.save(data);
+					mockCheckOrderStatus(tradeRequest,order);
+				}
+				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrumentToken())) {
+						LOGGER.info("Placing sell order overidding super trend... "+tradeRequest.getInstrumentToken());
+						order=new Order();
+						order.exchangeOrderId="1400000006412993";
+						order.disclosedQuantity="0";
+						order.validity="Day";
+						order.tradingSymbol=instrument.getTradingSymbol();
+						order.orderVariety=Constants.VARIETY_REGULAR;
+						order.userId=tradeRequest.getUserId();
+						order.orderType=orderParams.orderType;
+						order.triggerPrice="0.0";
+						order.statusMessage="Mock Test Success";
+						order.price="0.0";
+						order.status="Complete";
+						order.product=orderParams.product;
+						order.accountId=tradeRequest.getUserId();
+						order.exchange=orderParams.exchange;
+						order.orderId=UUID.randomUUID().toString();
+						order.symbol="";
+						order.pendingQuantity="0.0";
+						order.orderTimestamp=new Date();
+						order.exchangeTimestamp=new Date();
+						order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrumentToken());
+						order.transactionType=orderParams.transactionType;
+						order.filledQuantity=""+orderParams.quantity;
+						order.parentOrderId="";
+						order.tag=tradeRequest.getTag();
+						//TrailStopLossResponse data=convertToTrailDataObj(instrument.getInstrumentToken(), order);
+						//trailStopLossRepository.save(data);
+						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+						mockCheckOrderStatus(tradeRequest,order);
+				}else {
+					LOGGER.info("Order Sold by Trail stop loss.......");
+				}
+				
+				return order;
+			
+
+		} catch (JSONException | IOException | KiteException e) {
+			
+			e.printStackTrace();
+		}
+	return null;
+
+	}
+	private void mockCheckOrderStatus(OrderRequestDTO tradeRequest, Order order) throws KiteException, IOException {
+		OrderResponse result = convertOrderResponse(order, tradeRequest);
+		orderResponseRepository.save(result);
+		if( tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+			cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+		} else if(tradeRequest.getTransactionType().equalsIgnoreCase("Sell")) {
+			cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+		}
+	}
 	
 	
 	/** Place bracket order. */
@@ -716,7 +862,9 @@ public class KiteConnectService {
 	public void tickerUsage(KiteConnect kiteConnect, final ArrayList<Long> tokens)
 			throws IOException, WebSocketException, KiteException {
 		final KiteTicker tickerProvider = new KiteTicker(kiteConnect.getAccessToken(), kiteConnect.getApiKey());
+		LOGGER.info("trailStopLossFeature: "+trailStopLossFeature);
 		tickerProvider.setOnConnectedListener(new OnConnect() {
+			
 			@Override
 			public void onConnected() {
 				tickerProvider.subscribe(tokens);
@@ -754,15 +902,16 @@ public class KiteConnectService {
 		tickerProvider.setOnTickerArrivalListener(new OnTicks() {
 			@Override
 			public void onTicks(ArrayList<Tick> ticks) {
+				backTestFlag=false;
 				if (ticks != null && ticks.size() > 0 && ticks.get(0).getMode() != null) {
 					for(Tick tick :ticks) { 
 						com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(tick);
 						customTickBarList.addTick(tickz);
 						cacheLatestTick.put(tick.getInstrumentToken(), tick);
 						cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
-						/*if(cacheTradeOrder!=null && cacheTradeOrder.get(tick.getInstrumentToken())!=null && cacheTradeOrder.get(tick.getInstrumentToken()).equalsIgnoreCase("Buy")) {
+						if(cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 							calculateTrailStoLoss(tick.getInstrumentToken());
-						}*/
+						}
 					}
 				}
 			}
@@ -779,7 +928,6 @@ public class KiteConnectService {
 
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
-		LOGGER.info("Get Session User Id: " + userId + " Request Token: " + requestToken);
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
 		if (kitePropertyList != null && requestToken != null) {
@@ -835,6 +983,7 @@ public class KiteConnectService {
 
 	public ArrayList<List<Tick>> startBackTesting(KiteConnect kiteconnect, ArrayList<Long> instrumentTokens,
 			Date fromDate, Date toDate, String interval, boolean continuous) throws IOException, KiteException {
+		this.setBackTestFlag(true);
 		ArrayList<List<Tick>> tickList = getHistoricalData(kiteconnect, instrumentTokens, fromDate, toDate, interval,
 				continuous);
 		if (tickList != null && tickList.size() > 0) {
@@ -848,7 +997,8 @@ public class KiteConnectService {
 							customTickBarList.backTest(tickz);
 							cacheLatestTick.put(tick.getInstrumentToken(), tick);
 							cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
-							if(cacheTradeOrder!=null && cacheTradeOrder.get(tick.getInstrumentToken())!=null && cacheTradeOrder.get(tick.getInstrumentToken()).equalsIgnoreCase("Buy")) {
+							LOGGER.info("trailStopLossFeature "+trailStopLossFeature);
+							if(trailStopLossFeature.equalsIgnoreCase("true") && cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 								calculateTrailStoLoss(tick.getInstrumentToken());
 							}
 							Thread.sleep(300);
@@ -942,11 +1092,11 @@ public class KiteConnectService {
 		response.setDisclosedQuantity(order2.disclosedQuantity);
 		response.setExchange(order2.exchange);
 		response.setExchangeOrderId(order2.exchangeOrderId);
-		response.setExchangeTimestamp(order2.exchangeTimestamp);
+		response.setExchangeTimestamp(DateFormatUtil.getCurrentISTTime(new Date()));
 		response.setFilledQuantity(order2.filledQuantity);
 		response.setInstrumentToken(tradeRequest.getInstrumentToken());
 		response.setOrderId(order2.orderId);
-		response.setOrderTimestamp(order2.orderTimestamp);
+		response.setOrderTimestamp(DateFormatUtil.getCurrentISTTime(new Date()));
 		response.setOrderType(order2.orderType);
 		response.setOrderVariety(order2.orderVariety);
 		response.setParentOrderId(order2.parentOrderId);
@@ -967,13 +1117,19 @@ public class KiteConnectService {
 
 	}
 
-	public IgniteCache<Long, Instrument> getCacheInstrument() {
-		return cacheInstrument;
+	public boolean isBackTestFlag() {
+		return backTestFlag;
 	}
 
-	public void setCacheInstrument(IgniteCache<Long, Instrument> cacheInstrument) {
-		this.cacheInstrument = cacheInstrument;
+	public void setBackTestFlag(boolean backTestFlag) {
+		this.backTestFlag = backTestFlag;
 	}
-	
-	
+
+	public String getTrailStopLossFeature() {
+		return trailStopLossFeature;
+	}
+
+	public void setTrailStopLossFeature(String trailStopLossFeature) {
+		this.trailStopLossFeature = trailStopLossFeature;
+	}
 }

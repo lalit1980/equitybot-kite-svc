@@ -61,10 +61,6 @@ public class CustomTickBarList {
 		this.timeSeriesMap = new HashMap<>();
 		
 		CacheConfiguration<String, TimeSeries> ccfg = new CacheConfiguration<String, TimeSeries>("TimeSeriesCache");
-		ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-		ccfg.setCacheMode(CacheMode.PARTITIONED);
-		ccfg.setRebalanceMode(CacheRebalanceMode.NONE);
-		ccfg.setDataRegionName("1GB_Region");
 		cache = igniteConfig.getInstance().getOrCreateCache(ccfg);
 	}
 

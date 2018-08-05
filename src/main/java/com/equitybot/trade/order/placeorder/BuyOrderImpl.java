@@ -13,7 +13,11 @@ public class BuyOrderImpl implements IBuyOrder {
 
 	@Override
 	public void buyOrder(OrderRequestDTO tradeOrderRequestDTO) {
-		tradePortConnect.placeOrder(tradeOrderRequestDTO);
+		if(tradePortConnect.isBackTestFlag()) {
+			tradePortConnect.placeMockOrder(tradeOrderRequestDTO);
+		}else {
+			tradePortConnect.placeOrder(tradeOrderRequestDTO);
+		}
 	}
 
 	@Override

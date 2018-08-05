@@ -11,10 +11,10 @@ public class SellOrderImpl implements ISellOrder{
 	KiteConnectService tradePortConnect;
 	@Override
 	public void sellOrder(OrderRequestDTO tradeOrderRequestDTO) {
-		tradePortConnect.placeOrder(tradeOrderRequestDTO);
+		if(tradePortConnect.isBackTestFlag()) {
+			tradePortConnect.placeMockOrder(tradeOrderRequestDTO);
+		}else {
+			tradePortConnect.placeOrder(tradeOrderRequestDTO);
+		}
 	}
-
-	
-
-
 }

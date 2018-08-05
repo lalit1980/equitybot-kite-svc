@@ -23,17 +23,9 @@ public class IgniteCache {
 
     public IgniteCache(){
         CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<>("CachedLatestTick");
-        ccfgLatestTickParams.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-        ccfgLatestTickParams.setCacheMode(CacheMode.PARTITIONED);
-        ccfgLatestTickParams.setRebalanceMode(CacheRebalanceMode.NONE);
-        ccfgLatestTickParams.setDataRegionName("1GB_Region");
         this.latestTickCache = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
 
         CacheConfiguration<Long, Tick> ccfgMaxTrailStopLossTickCacheParams = new CacheConfiguration<>("MaxTrailStopLossTickCache");
-        ccfgMaxTrailStopLossTickCacheParams.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-        ccfgMaxTrailStopLossTickCacheParams.setCacheMode(CacheMode.PARTITIONED);
-        ccfgMaxTrailStopLossTickCacheParams.setRebalanceMode(CacheRebalanceMode.NONE);
-        ccfgMaxTrailStopLossTickCacheParams.setDataRegionName("1GB_Region");
         this.maxTrailStopLossTickCache = igniteConfig.getInstance().getOrCreateCache(ccfgMaxTrailStopLossTickCacheParams);
     }
 

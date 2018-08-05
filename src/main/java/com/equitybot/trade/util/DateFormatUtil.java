@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -29,16 +30,38 @@ public class DateFormatUtil {
 
 	public static final String MONGODB_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
 	public static final String TA4J = "yyyy-MM-dd";
+	public static final String IST_DATE_FORMAT = "dd-MM-yyyy hh:mm:ss";
 
 	public static String toISO8601UTC(Date date, String dateFormat) {
 
 		Format formatter = new SimpleDateFormat(MONGODB_DATE_FORMAT);
 		return formatter.format(date);
 	}
-
+	public static String  getCurrentISTTime() {
+		Calendar currentdate = Calendar.getInstance();
+		DateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+		TimeZone obj = TimeZone.getTimeZone("IST");
+		formatter.setTimeZone(obj);
+		return formatter.format(currentdate.getTime());
+    }
+	public static String  getCurrentISTTime(Date date) {
+		
+		Calendar currentdate = Calendar.getInstance();
+		currentdate.setTime(date);
+		DateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+		TimeZone obj = TimeZone.getTimeZone("IST");
+		formatter.setTimeZone(obj);
+		return formatter.format(currentdate.getTime());
+    }
+	public static void main(String[] args) {
+		String dateFormat=getCurrentISTTime(new Date());
+		System.out.println(dateFormat);
+		Date date=fromISO8601UTC(dateFormat, IST_DATE_FORMAT);
+		System.out.println("System Date in IST: "+date);
+	}
 	public static Date fromISO8601UTC(String dateStr, String dateFormat) {
-		TimeZone tz = TimeZone.getTimeZone("UTC");
-		DateFormat df = new SimpleDateFormat(dateFormat);
+		TimeZone tz = TimeZone.getTimeZone("IST");
+		SimpleDateFormat df = new SimpleDateFormat(IST_DATE_FORMAT);
 		df.setTimeZone(tz);
 
 		try {

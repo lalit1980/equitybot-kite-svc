@@ -57,5 +57,21 @@ public class PropertyRepositoryImpl implements PropertyRespositoryCustom {
 		
 	}
 
+	@Override
+	public UpdateResult updatStopLoss(String userId, double stopLoss) {
+		Query query = new Query(Criteria.where("userId").is(userId));
+		Update update = new Update();
+		update.set("stopLoss", stopLoss);
+		return mongoTemplate.updateFirst(query, update, KiteProperty.class);
+	}
+
+	@Override
+	public UpdateResult updatQuantity(String userId, double quantity) {
+		Query query = new Query(Criteria.where("userId").is(userId));
+		Update update = new Update();
+		update.set("quantity", quantity);
+		return mongoTemplate.updateFirst(query, update, KiteProperty.class);
+	}
+
 	
 }
