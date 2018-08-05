@@ -1,6 +1,5 @@
-def label = "worker-${UUID.randomUUID().toString()}"
 
-podTemplate(label: 'label',
+podTemplate(label: 'builder',
             containers: [
                     containerTemplate(name: 'jnlp', image: 'larribas/jenkins-jnlp-slave-with-ssh:1.0.0', args: '${computer.jnlpmac} ${computer.name}'),
                     containerTemplate(name: 'docker', image: 'docker', command: 'cat', ttyEnabled: true),
@@ -15,13 +14,13 @@ podTemplate(label: 'label',
             ]) 
             {
 
-              node('label') {
+              node('builder') {
 
                   def DOCKER_HUB_ACCOUNT = 'anilbhagat'
                   def DOCKER_IMAGE_NAME = 'anilbhagat/kite'
                   def K8S_DEPLOYMENT_NAME = 'kite-app'
 
-                  stage('Clone Kite App Repository') {
+                  stage('Clone Hugo App Repository') {
                       checkout scm
 
                       stage('Build Code') {
