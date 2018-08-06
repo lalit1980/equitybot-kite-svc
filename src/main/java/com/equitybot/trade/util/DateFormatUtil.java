@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
 import com.zerodhatech.models.Depth;
 import com.zerodhatech.models.HistoricalData;
@@ -24,7 +27,6 @@ import com.zerodhatech.models.Tick;
 
 
 public class DateFormatUtil {
-
 	public static final String KITE_SERVICE_FORMAT = "E MMM dd HH:mm:ss Z yyyy";
 	public static final String KITE_TICK_TIMESTAMP_FORMAT = "MMM dd, yyyy hh:mm:ss a";
 
@@ -45,7 +47,6 @@ public class DateFormatUtil {
 		return formatter.format(currentdate.getTime());
     }
 	public static String  getCurrentISTTime(Date date) {
-		
 		Calendar currentdate = Calendar.getInstance();
 		currentdate.setTime(date);
 		DateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
@@ -53,12 +54,22 @@ public class DateFormatUtil {
 		formatter.setTimeZone(obj);
 		return formatter.format(currentdate.getTime());
     }
-	public static void main(String[] args) {
-		String dateFormat=getCurrentISTTime(new Date());
-		System.out.println(dateFormat);
-		Date date=fromISO8601UTC(dateFormat, IST_DATE_FORMAT);
-		System.out.println("System Date in IST: "+date);
+	public static void test() {
+		DateFormat formatter = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss");
+		 String dateInString = "2018-08-03T15:29:00+0530";
+		 try {
+	            Date date1 = formatter.parse(dateInString);
+	            System.out.println(date1);
+	            System.out.println(formatter.format(date1));
+
+	        } catch (ParseException e) {
+	            e.printStackTrace();
+	        }
 	}
+	public static void main(String[] args) {
+		test();
+	}
+	
 	public static Date fromISO8601UTC(String dateStr, String dateFormat) {
 		TimeZone tz = TimeZone.getTimeZone("IST");
 		SimpleDateFormat df = new SimpleDateFormat(IST_DATE_FORMAT);
@@ -166,8 +177,9 @@ public class DateFormatUtil {
 		if (historicalData != null && historicalData.dataArrayList!=null && historicalData.dataArrayList.size() > 0) {
 				List<HistoricalData> listArray=historicalData.dataArrayList;
 				for (HistoricalData historicalData2 : listArray) {
+					System.out.println("Historical Data Timestamp: "+historicalData2.timeStamp);
 					Date from = fromISO8601UTC(historicalData2.timeStamp);
-					System.out.println(" From: "+from);
+					//System.out.println(" From: "+from);
 					Tick tick=new Tick();
 					tick.setTickTimestamp(from);
 					tick.setClosePrice(historicalData2.close);

@@ -2,6 +2,8 @@ package com.equitybot.trade;
 
 import static springfox.documentation.builders.PathSelectors.regex;
 
+import java.util.TimeZone;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +20,7 @@ public class Starter {
 		
 	
 	public static void main(String[] args){
+		TimeZone.setDefault(TimeZone.getTimeZone("IST"));
 		SpringApplication.run(Starter.class, args);
 		
 	}

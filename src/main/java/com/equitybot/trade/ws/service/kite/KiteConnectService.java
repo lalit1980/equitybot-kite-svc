@@ -300,7 +300,6 @@ public class KiteConnectService {
 			double purcahsePrice=this.cachePurchasedPrice.get(instrumentToken);
 			//double stopLossDistance=5;
 			stopLoss=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
-			LOGGER.info("Stop Loss Value from Cache: "+stopLoss);
 			if(stopLoss<=0) {
 				stopLoss=20;
 			}
@@ -322,7 +321,7 @@ public class KiteConnectService {
 	        	tradeRequest.setTradingsymbol(this.cacheInstrument.get(instrumentToken).getTradingsymbol());
 	        	tradeRequest.setTag("TrailST");
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, 0.0);
-	        	LOGGER.info("Stop Loss Hit Instrument: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("King got fucked Stop Loss got hit for stock: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
 	        	if(isBackTestFlag()) {
 	        		LOGGER.info("Inside Trail Stop Loss Hit to place Mock sell order: ");
 	        		placeMockOrder(tradeRequest);
@@ -332,7 +331,7 @@ public class KiteConnectService {
 	    		}
 	        	
 	        }else{
-	        	LOGGER.info("King Chutiye nahi bechta Instrument: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("King Chutiye won't sell stock: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, stopLossLimit);
 	        }
 	        
@@ -380,7 +379,6 @@ public class KiteConnectService {
 			OrderParams orderParams = new OrderParams();
 			InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
 			quantity=this.cacheQuantity.get(cacheInstrument.get(instrument.getInstrumentToken()).getTradingsymbol());
-			LOGGER.info("*****************Mock Test Quantity: "+quantity);
 			if(quantity==0) {
 				quantity=2;
 			}
@@ -862,7 +860,6 @@ public class KiteConnectService {
 	public void tickerUsage(KiteConnect kiteConnect, final ArrayList<Long> tokens)
 			throws IOException, WebSocketException, KiteException {
 		final KiteTicker tickerProvider = new KiteTicker(kiteConnect.getAccessToken(), kiteConnect.getApiKey());
-		LOGGER.info("trailStopLossFeature: "+trailStopLossFeature);
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			
 			@Override
@@ -997,7 +994,6 @@ public class KiteConnectService {
 							customTickBarList.backTest(tickz);
 							cacheLatestTick.put(tick.getInstrumentToken(), tick);
 							cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
-							LOGGER.info("trailStopLossFeature "+trailStopLossFeature);
 							if(trailStopLossFeature.equalsIgnoreCase("true") && cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 								calculateTrailStoLoss(tick.getInstrumentToken());
 							}

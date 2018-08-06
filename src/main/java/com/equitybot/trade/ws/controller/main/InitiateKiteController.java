@@ -46,6 +46,11 @@ public class InitiateKiteController {
 	private IgniteCache<Long, Instrument> cacheInstrument;
 	private IgniteCache<Long, Double> stopLoss;
 	private IgniteCache<Long, Integer> quantity;
+	
+	private IgniteCache<String, Double> cacheStopLossValue;
+	private IgniteCache<String, Integer> cacheQuantity;
+	
+	
 	public InitiateKiteController() {
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
 		this.cacheMaxTrailStopLoss = igniteConfig.getInstance().getOrCreateCache(ccfgcacheMaxTrailStopLoss);
@@ -55,6 +60,12 @@ public class InitiateKiteController {
 		
 		CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>("CacheInstrument");
 		this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
+		
+		CacheConfiguration<String, Double> ccfgcStopLoss = new CacheConfiguration<String, Double>("CacheStopLoss");
+		this.cacheStopLossValue = igniteConfig.getInstance().getOrCreateCache(ccfgcStopLoss);
+		
+		CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
+		this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
 	}
 	
 	
@@ -80,6 +91,8 @@ public class InitiateKiteController {
 			if(list!=null && list.size()>0) {
 				for (Instrument instrument : list) {
 					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
+					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
+					cacheQuantity.put(instrument.getTradingsymbol(), 2);
 				}
 			}
 			if(instrumentTokens!=null && instrumentTokens.size()>0) {
@@ -109,6 +122,8 @@ public class InitiateKiteController {
 			if(list!=null && list.size()>0) {
 				for (Instrument instrument : list) {
 					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
+					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
+					cacheQuantity.put(instrument.getTradingsymbol(), 2);
 				}
 			}
 			
