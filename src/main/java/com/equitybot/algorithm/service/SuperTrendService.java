@@ -26,7 +26,8 @@ public class SuperTrendService {
         List<CompletableFuture<SuperTrendDTO>> completableFutures = new ArrayList<>();
         CompletableFuture<SuperTrendDTO> trendDTOCompletableFuture;
         for (BarDTO bar : tick.getBarDTOS()) {
-            for (int[] multiplierPeriod : yamlConfig.getMultiplierPeriodValue()) {
+            for (int index = 0;yamlConfig.getMultiplierPeriodValue().size() > index ; index++) {
+                int[] multiplierPeriod = yamlConfig.getMultiplierPeriodValue().get(index);
                 trendDTOCompletableFuture = superTrendIndicator.generate(multiplierPeriod[0], multiplierPeriod[1], bar);
                 completableFutures.add(trendDTOCompletableFuture);
             }

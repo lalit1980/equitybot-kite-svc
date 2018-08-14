@@ -2,10 +2,7 @@ package com.equitybot.common.model;
 
 import org.ta4j.core.Decimal;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class BarDTO {
 
@@ -20,7 +17,7 @@ public class BarDTO {
     private List<SuperTrendDTO> superTrends;
 
     public BarDTO() {
-        this.superTrends = new ArrayList<>();
+        this.superTrends = Collections.synchronizedList(new ArrayList<>());
     }
 
     public BarDTO(long instrument, int barSize, Decimal highPrice, Decimal lowPrice, Decimal openPrice,
@@ -33,7 +30,7 @@ public class BarDTO {
         this.closePrice = closePrice;
         this.volume = volume;
         this.timestamp = timestamp;
-        this.superTrends = new LinkedList<>();
+        this.superTrends = Collections.synchronizedList(new ArrayList<>());
     }
 
     public BarDTO(long instrument, int barSize, Decimal highPrice, Decimal lowPrice, Decimal openPrice,

@@ -1,6 +1,7 @@
 package com.equitybot.dataprovider.service;
 
 import com.equitybot.common.config.YAMLConfig;
+import com.equitybot.common.model.BarDTO;
 import com.equitybot.common.model.TickDTO;
 import com.equitybot.dataprovider.bar.BarModel;
 import com.equitybot.dataprovider.bar.HLOCBarGenerator;
@@ -28,13 +29,13 @@ public class HLOCBarService {
 
     public void serve(TickDTO tickDTO) {
         dataProviderCache.putOnLatestTickCache(tickDTO.getInstrumentToken(), tickDTO);
-
-        List<CompletableFuture<BarModel>> completableFutures = new ArrayList<>();
+        List<CompletableFuture<BarDTO>> completableFutures = new ArrayList<>();
         for (int barSize : yamlConfig.getBarsizesValue()) {
             completableFutures.add(hlocBarGenerator.generateAsync(barSize, tickDTO));
         }
-        CompletableFuture<BarModel>[] completableFutureArray = completableFutures.toArray(new CompletableFuture[completableFutures.size()]);
+        CompletableFuture<BarDTO>[] completableFutureArray = completableFutures.toArray(new CompletableFuture[completableFutures.size()]);
         CompletableFuture.allOf(completableFutureArray).join();
+
     }
 
 }

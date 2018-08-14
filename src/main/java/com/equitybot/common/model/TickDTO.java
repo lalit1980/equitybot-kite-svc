@@ -27,7 +27,7 @@ public class TickDTO {
     private List<BarDTO> barDTOS;
 
     public TickDTO() {
-        this.barDTOS = new ArrayList<>();
+        this.barDTOS = Collections.synchronizedList(new ArrayList<>());
     }
 
     public String getMode() {
