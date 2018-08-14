@@ -3,38 +3,30 @@
 ### Java properties file format. 
 
 
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
-    consumer:
-      topic-kite-tradeorder: topic-kite-tradeorder
-      auto-offset-reset: latest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      from:
-        beginning: true
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      topic-kite-tradeorder: topic-kite-tradeorder
-      topic-data-seriesupdate: topic-data-seriesupdate
-      
-  profiles: dev
+profiles: dev
+
+barsizes:
+    - 5
+    - 10
+    - 15
+
+
+multiplierPeriods:
+    - 3,7
+    - 2,10
   
-  data:
-    mongodb:
-      host: localhost
-      port: 27017
-      database: hc4
+data:
+  mongodb:
+    host: localhost
+    port: 27017
+    database: hc4
       
 server:
   address: 127.0.0.1
   port: 9010
-tick:
-  file:
-    Serializer: /Users/lalitsingh/data/TestData
-  barsize: 300
-  maxserializetick: 1024
-  backTestFlag: false
-  
-trailStopLossFeature: Yes
+
+report:
+  outputFolder: C:\data\kite\out\
+
+ta4j:
+  maximumTickCount: 99
