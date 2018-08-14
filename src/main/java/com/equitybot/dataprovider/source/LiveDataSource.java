@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,7 +21,7 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
     private static Set<Long> tokens;
 
     static {
-        tokens = new HashSet<>();
+        tokens = Collections.synchronizedSet(new HashSet<>());
     }
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());

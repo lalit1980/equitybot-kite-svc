@@ -15,12 +15,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class SuperTrendReportingService {
 
-    private Map<String, File> fileMap = new HashMap<>();
+    private Map<String, File> fileMap = new ConcurrentHashMap<>();
 
     @Value("${report.outputFolder}")
     private String outputFolder;

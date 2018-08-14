@@ -1,11 +1,10 @@
 package com.equitybot.dataprovider.model;
 
 import com.equitybot.common.model.TickDTO;
+import sun.util.resources.es.CurrencyNames_es_CU;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HistoricalTimeMatch {
 
@@ -13,8 +12,8 @@ public class HistoricalTimeMatch {
     private List<TickDTO> tickDTOS;
 
     public HistoricalTimeMatch() {
-        this.timeIndexMap = new HashMap<>();
-        this.tickDTOS = new ArrayList<>();
+        this.timeIndexMap = new ConcurrentHashMap<>();
+        this.tickDTOS = Collections.synchronizedList(new ArrayList<>());
     }
 
     public Map<Long, Integer> getTimeIndexMap() {

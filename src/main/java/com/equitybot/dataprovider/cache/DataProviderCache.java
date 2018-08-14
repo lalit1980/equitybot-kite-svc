@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -18,8 +19,8 @@ public class DataProviderCache {
     private Map<Long, TickDTO> latestTickCache;
 
     public DataProviderCache() {
-        tickDataModelCache = new HashMap<>();
-        latestTickCache = new HashMap<>();
+        tickDataModelCache = new ConcurrentHashMap<>();
+        latestTickCache = new ConcurrentHashMap<>();
     }
 
 

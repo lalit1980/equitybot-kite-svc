@@ -11,26 +11,16 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 public class AlgorithmCache {
 
-    private IgniteCache<Long, Instrument> instrumentCache;
     private Map<String, SuperTrendModel> superTrendModelCache;
 
     public AlgorithmCache() {
-        this.superTrendModelCache = new HashMap<>();
-        CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<>("CacheInstrument");
-        this.instrumentCache = IgniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
-    }
-
-    public Instrument getInstrument(Long instrument) {
-        return this.instrumentCache.get(instrument);
-    }
-
-    public void putOnInstrumentCache(Long instrumentToken, Instrument instrument) {
-        this.instrumentCache.put(instrumentToken, instrument);
+        this.superTrendModelCache = new ConcurrentHashMap<>();
     }
 
     public SuperTrendModel getSuperTrendModel(String instrumentBarSizeMultiplierPeriod) {

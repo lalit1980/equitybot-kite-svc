@@ -12,13 +12,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class LiveDataService {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private static Map<Long,HistoricalTimeMatch> historicalTimeMatchMap = new HashMap<>();
+    private static Map<Long,HistoricalTimeMatch> historicalTimeMatchMap = new ConcurrentHashMap<>();
 
     @Autowired
     private DataProviderService dataProviderService;

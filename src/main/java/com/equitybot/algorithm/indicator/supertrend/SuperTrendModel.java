@@ -3,6 +3,7 @@ package com.equitybot.algorithm.indicator.supertrend;
 import com.equitybot.common.model.BarDTO;
 import org.ta4j.core.Decimal;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -40,7 +41,7 @@ public class SuperTrendModel {
         this.instrument = instrument;
         this.barSize = barSize;
         this.isInit = false;
-        this.initTrueRangeList = new LinkedList<>();
+        this.initTrueRangeList = Collections.synchronizedList(new LinkedList<>());
     }
 
     public long getInstrument() {
