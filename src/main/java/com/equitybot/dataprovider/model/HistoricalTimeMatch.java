@@ -1,9 +1,11 @@
 package com.equitybot.dataprovider.model;
 
 import com.equitybot.common.model.TickDTO;
-import sun.util.resources.es.CurrencyNames_es_CU;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HistoricalTimeMatch {

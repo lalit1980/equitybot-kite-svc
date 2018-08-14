@@ -3,7 +3,6 @@ package com.equitybot.dataprovider.service;
 import com.equitybot.common.config.YAMLConfig;
 import com.equitybot.common.model.BarDTO;
 import com.equitybot.common.model.TickDTO;
-import com.equitybot.dataprovider.bar.BarModel;
 import com.equitybot.dataprovider.bar.HLOCBarGenerator;
 import com.equitybot.dataprovider.cache.DataProviderCache;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +30,7 @@ public class HLOCBarService {
         dataProviderCache.putOnLatestTickCache(tickDTO.getInstrumentToken(), tickDTO);
         List<CompletableFuture<BarDTO>> completableFutures = new ArrayList<>();
         for (int barSize : yamlConfig.getBarsizesValue()) {
-            completableFutures.add(hlocBarGenerator.generateAsync(barSize, tickDTO));
+            completableFutures.add(hlocBarGenerator.generateAsync(barSize * 60, tickDTO));
         }
         CompletableFuture<BarDTO>[] completableFutureArray = completableFutures.toArray(new CompletableFuture[completableFutures.size()]);
         CompletableFuture.allOf(completableFutureArray).join();

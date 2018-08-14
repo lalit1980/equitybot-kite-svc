@@ -1,6 +1,6 @@
 package com.equitybot.dataprovider.source;
 
-import com.equitybot.dataprovider.service.LiveDataService;
+import com.equitybot.dataprovider.service.LiveDataPreparationService;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Order;
@@ -8,17 +8,18 @@ import com.zerodhatech.models.Tick;
 import com.zerodhatech.ticker.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 
 @Service
 public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpdate, OnError, OnTicks {
 
     private static Set<Long> tokens;
+
+    private static List<Long> latestTokens;
 
     static {
         tokens = Collections.synchronizedSet(new HashSet<>());
@@ -26,7 +27,8 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private KiteTicker tickerProvider;
-    private LiveDataService liveDataService;
+    @Autowired
+    private LiveDataPreparationService liveDataPreparationService;
 
     @Override
     public void onConnected() {
@@ -55,8 +57,12 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
     @Override
     public void onTicks(ArrayList<Tick> ticks) {
         if (ticks != null && !ticks.isEmpty() && ticks.get(0).getMode() != null) {
-            for (Tick tick : ticks) {
-                liveDataService.serve(tick);
+            try {
+                liveDataPreparationService.serve(ticks, latestTokens);
+            } catch (KiteException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -90,6 +96,7 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
     public void subscribe(ArrayList<Long> instruments) {
         tokens.addAll(instruments);
         tickerProvider.subscribe(instruments);
+        latestTokens = Collections.synchronizedList(instruments);
         tickerProvider.setMode(instruments, KiteTicker.modeFull);
     }
 

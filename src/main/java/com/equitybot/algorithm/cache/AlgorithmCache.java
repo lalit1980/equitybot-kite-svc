@@ -1,15 +1,10 @@
 package com.equitybot.algorithm.cache;
 
 import com.equitybot.algorithm.indicator.supertrend.SuperTrendModel;
-import com.equitybot.common.config.IgniteConfig;
-import com.zerodhatech.models.Instrument;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.configuration.CacheConfiguration;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

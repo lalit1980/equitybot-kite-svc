@@ -34,7 +34,7 @@ public class DataProviderController {
             @RequestBody List<Long> instrumentTokens) {
 
         logger.info(" -- tigerHistoricalData");
-      //  tiger(fromDate, toDate, instrumentTokens, interval, false);
+        //  tiger(fromDate, toDate, instrumentTokens, interval, false);
     }
 
 
@@ -50,7 +50,6 @@ public class DataProviderController {
 
     private void tiger(Date fromDate, Date toDate, List<Long> instrumentTokens, String interval, boolean continuous) {
         List<CompletableFuture<TickDTO>> completableFutures = new ArrayList<>();
-
         for (Long instrument : instrumentTokens) {
             completableFutures.add(historicalDataService.serve(instrument, fromDate, toDate, interval, continuous));
         }

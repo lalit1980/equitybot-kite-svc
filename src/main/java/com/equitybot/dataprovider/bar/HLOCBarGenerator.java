@@ -16,30 +16,6 @@ public class HLOCBarGenerator {
     @Autowired
     private DataProviderCache dataProviderCache;
 
-    @Async("hlocTaskPool")
-    public CompletableFuture<BarDTO> generateAsync(int barSize, TickDTO tickDTO) {
-        String name = Thread.currentThread().getName();
-        System.out.println(" -- instrument : " + tickDTO.getInstrumentToken() + " # Thread Name : " + name +
-                "  # barSize : " + barSize);
-
-        String instrumentAndBarSize = tickDTO.getInstrumentToken() + "-" + barSize;
-        BarModel barModel = dataProviderCache.getTickDataModel(instrumentAndBarSize);
-        if (barModel == null) {
-            barModel = getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize);
-        }
-        act(barModel, tickDTO);
-        if (barModel.getTickCount() == barSize) {
-            BarDTO barDTO =  getBarDTOS(barModel);
-            tickDTO.getBarDTOS().add(barDTO);
-            dataProviderCache.putOnTickDataModelCache(instrumentAndBarSize, getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize));
-            return CompletableFuture.completedFuture(barDTO);
-
-        } else {
-            dataProviderCache.putOnTickDataModelCache(instrumentAndBarSize, barModel);
-            return CompletableFuture.completedFuture(null);
-        }
-    }
-
     private static void act(BarModel barModel, TickDTO tick) {
         if (barModel.tickCount == 0) {
             barModel.lowPrice = Decimal.valueOf(tick.getLowPrice());
@@ -61,6 +37,30 @@ public class HLOCBarGenerator {
     private static BarDTO getBarDTOS(BarModel barModel) {
         return new BarDTO(barModel.getInstrument(), barModel.getBarSize(), barModel.getHighPrice(), barModel.getLowPrice(),
                 barModel.getOpenPrice(), barModel.getClosePrice(), barModel.getVolume(), barModel.getTimestamp());
+    }
+
+    @Async("hlocTaskPool")
+    public CompletableFuture<BarDTO> generateAsync(int barSize, TickDTO tickDTO) {
+        String name = Thread.currentThread().getName();
+        System.out.println(" -- instrument : " + tickDTO.getInstrumentToken() + " # Thread Name : " + name +
+                "  # barSize : " + barSize);
+
+        String instrumentAndBarSize = tickDTO.getInstrumentToken() + "-" + barSize;
+        BarModel barModel = dataProviderCache.getTickDataModel(instrumentAndBarSize);
+        if (barModel == null) {
+            barModel = getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize);
+        }
+        act(barModel, tickDTO);
+        if (barModel.getTickCount() == barSize) {
+            BarDTO barDTO = getBarDTOS(barModel);
+            tickDTO.getBarDTOS().add(barDTO);
+            dataProviderCache.putOnTickDataModelCache(instrumentAndBarSize, getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize));
+            return CompletableFuture.completedFuture(barDTO);
+
+        } else {
+            dataProviderCache.putOnTickDataModelCache(instrumentAndBarSize, barModel);
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     private BarModel getNewTickDataBarModel(Long instrument, int barSize) {

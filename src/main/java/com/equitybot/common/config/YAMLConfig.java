@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Configuration
@@ -12,26 +13,26 @@ import java.util.List;
 @ConfigurationProperties
 public class YAMLConfig {
 
-    private List<String> barsizes = new ArrayList<>();
+    private List<String> barsizesminutes = Collections.synchronizedList(new ArrayList<>());
 
     private List<Integer> barsizesValue;
 
-    private List<String> multiplierPeriods = new ArrayList<>();
+    private List<String> multiplierPeriods = Collections.synchronizedList(new ArrayList<>());
 
     private List<int[]> multiplierPeriodValue;
 
-    public List<String> getBarsizes() {
-        return barsizes;
+    public List<String> getBarsizesminutes() {
+        return barsizesminutes;
     }
 
-    public void setBarsizes(List<String> barsizes) {
-        this.barsizes = barsizes;
+    public void setBarsizesminutes(List<String> barsizesminutes) {
+        this.barsizesminutes = barsizesminutes;
     }
 
     public List<Integer> getBarsizesValue() {
         if (barsizesValue == null) {
-            barsizesValue = new ArrayList<>();
-            for (String barsize : barsizes) {
+            barsizesValue = Collections.synchronizedList(new ArrayList<>());
+            for (String barsize : barsizesminutes) {
                 barsizesValue.add(Integer.parseInt(barsize));
             }
         }
@@ -48,7 +49,7 @@ public class YAMLConfig {
 
     public List<int[]> getMultiplierPeriodValue() {
         if (multiplierPeriodValue == null) {
-            multiplierPeriodValue = new ArrayList<>();
+            multiplierPeriodValue = Collections.synchronizedList(new ArrayList<>());
             for (String multiplierPeriod : multiplierPeriods) {
                 String[] valueString = multiplierPeriod.split(",");
                 multiplierPeriodValue.add(new int[]{Integer.parseInt(valueString[0]), Integer.parseInt(valueString[1])});

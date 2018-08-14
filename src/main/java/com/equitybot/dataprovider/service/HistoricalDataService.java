@@ -1,6 +1,5 @@
 package com.equitybot.dataprovider.service;
 
-import com.equitybot.common.model.SuperTrendDTO;
 import com.equitybot.common.model.TickDTO;
 import com.equitybot.dataprovider.source.HistoricalDataSource;
 import com.equitybot.dataprovider.util.DataMapper;
@@ -30,7 +29,7 @@ public class HistoricalDataService {
 
     @Async("dataProviderTaskPool")
     public CompletableFuture<TickDTO> serve(Long instrument, Date fromDate, Date toDate, String interval, boolean continuous) {
-        TickDTO tickDTO=null;
+        TickDTO tickDTO = null;
 
         try {
             String name = Thread.currentThread().getName();
