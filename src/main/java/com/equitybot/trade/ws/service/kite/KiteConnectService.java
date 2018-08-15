@@ -1,6 +1,7 @@
 package com.equitybot.trade.ws.service.kite;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -776,7 +777,12 @@ public class KiteConnectService {
 			Long instrumentToken = iterator.next();
 			HistoricalData historicalData = kiteConnect.getHistoricalData(fromDate, toDate,
 					String.valueOf(instrumentToken), interval, false);
-			tickList.add(DateFormatUtil.loadHistoricalDataSeries(historicalData, instrumentToken));
+			try {
+				tickList.add(DateFormatUtil.getTickList(historicalData, instrumentToken));
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 
@@ -991,6 +997,7 @@ public class KiteConnectService {
 						try {
 							Tick tick = list.get(j);
 							com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(tick);
+							LOGGER.info("Back test: "+tickz.toString());
 							customTickBarList.backTest(tickz);
 							cacheLatestTick.put(tick.getInstrumentToken(), tick);
 							cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());

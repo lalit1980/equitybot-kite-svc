@@ -252,6 +252,99 @@ public class DateFormatUtil {
 		}
 		return tickList;
 	}
+	
+	
+	public static final String KITE_TICK_TIMESTAMP = "yyyy-MM-dd'T'HH:mm:ssZ";
+    public static final DateFormat dateFormat;
+    private static Map<String, ArrayList<Depth>> depth;
+
+    static {
+        dateFormat = new SimpleDateFormat(KITE_TICK_TIMESTAMP, new Locale("en", "IN"));
+        depth = getDepth();
+    }
+    
+    public static List<Tick> getTickList(HistoricalData historicalDatas, long instrumentToken) throws ParseException {
+		List<Tick> tickList=new ArrayList<Tick>();
+		if (historicalDatas != null && historicalDatas.dataArrayList!=null && historicalDatas.dataArrayList.size() > 0) {
+				for (HistoricalData historicalData : historicalDatas.dataArrayList) {
+					tickList.add(mapInTick(historicalData, instrumentToken));
+				}
+		}
+		return tickList;
+	}
+
+    
+	
+	public static Tick mapInTick(HistoricalData historicalData, Long instrument) throws ParseException {
+        Date from = getDate(historicalData.timeStamp);
+        Tick tick = new Tick();
+        tick.setTickTimestamp(from);
+        tick.setClosePrice(historicalData.close);
+        tick.setOpenPrice(historicalData.open);
+        tick.setHighPrice(historicalData.high);
+        tick.setLowPrice(historicalData.low);
+        tick.setLastTradedPrice(historicalData.close);
+        tick.setLastTradedQuantity(historicalData.volume);
+        tick.setInstrumentToken(instrument);
+        tick.setMarketDepth(depth);
+        return tick;
+    }
+	
+	private static Date getDate(String dateString) throws ParseException {
+        return dateFormat.parse(dateString);
+    }
+	
+	private static Map<String, ArrayList<Depth>> getDepth() {
+        Map<String, ArrayList<Depth>> depths = new HashMap<>();
+        ArrayList<Depth> buys = new ArrayList<>();
+        ArrayList<Depth> sell = new ArrayList<>();
+        Depth depth = new Depth();
+        depth.setOrders(40);
+        depth.setPrice(212.12);
+        depth.setQuantity(100);
+        buys.add(depth);
+        depth = new Depth();
+        depth.setOrders(40);
+        depth.setPrice(218.12);
+        depth.setQuantity(200);
+        buys.add(depth);
+        depth = new Depth();
+        depth.setOrders(40);
+        depth.setPrice(214.12);
+        depth.setQuantity(300);
+        buys.add(depth);
+        depth = new Depth();
+        depth.setOrders(40);
+        depth.setPrice(290.12);
+        depth.setQuantity(400);
+        buys.add(depth);
+        depths.put("buy", buys);
+        depth = new Depth();
+        depth.setOrders(30);
+        depth.setPrice(3432.12);
+        depth.setQuantity(4400);
+        sell.add(depth);
+        depth = new Depth();
+        depth.setOrders(40);
+        depth.setPrice(34.12);
+        depth.setQuantity(200);
+        sell.add(depth);
+        depth = new Depth();
+        depth.setOrders(50);
+        depth.setPrice(324.12);
+        depth.setQuantity(4500);
+        sell.add(depth);
+        depth = new Depth();
+        depth.setOrders(60);
+        depth.setPrice(53.12);
+        depth.setQuantity(453);
+        sell.add(depth);
+        depths.put("sell", sell);
+        return depths;
+
+    }
+	
+	
 	public static ZonedDateTime convertKiteTickTimestampFormat(String kiteTimestamp) throws ParseException {
 		return ZonedDateTime.ofInstant(new SimpleDateFormat(KITE_TICK_TIMESTAMP_FORMAT, Locale.US).parse(kiteTimestamp).toInstant(), ZoneId.systemDefault());
 	}
