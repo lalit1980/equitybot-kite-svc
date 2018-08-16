@@ -86,6 +86,7 @@ public class KiteConnectService {
 	private IgniteCache<String, Double> cacheStopLoss;
 	private IgniteCache<String, Integer> cacheQuantity;
 	private IgniteCache<Long, Instrument> cacheInstrument;
+	private IgniteCache<Long, Boolean> startTrade;
 	
 	private boolean backTestFlag;
 
@@ -106,8 +107,6 @@ public class KiteConnectService {
 	@Autowired
 	PropertyRepository propertyRepository;
 
-	@Autowired
-	InstrumentRepository instrumentRepository;
 
 	@Autowired
 	OrderResponseRepository orderResponseRepository;
@@ -168,7 +167,7 @@ public class KiteConnectService {
 			
 		 CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
 		 this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
-		
+		 
 	     this.backTestFlag=false;
 		
 	}
@@ -236,14 +235,14 @@ public class KiteConnectService {
 				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 				OrderParams orderParams = new OrderParams();
-				InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-				quantity=this.cacheQuantity.get(cacheInstrument.get(instrument.getInstrumentToken()).getTradingsymbol());
+				Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
+				quantity=this.cacheQuantity.get(instrument.getTradingsymbol());
 				if(quantity==0) {
 					quantity=2;
 				}
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
-				orderParams.tradingsymbol = instrument.getTradingSymbol();
+				orderParams.tradingsymbol = instrument.getTradingsymbol();
 				orderParams.product = Constants.PRODUCT_MIS;
 				orderParams.exchange = Constants.EXCHANGE_NFO;
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
@@ -251,10 +250,10 @@ public class KiteConnectService {
 				orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
 				Order order=null;
 				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
-					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
+					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrument_token()));
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 				}
-				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrumentToken())) {
+				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrument_token())) {
 					LOGGER.info("Placing sell order... "+tradeRequest.getInstrumentToken());
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 				}
@@ -378,14 +377,14 @@ public class KiteConnectService {
 		try {
 			kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 			OrderParams orderParams = new OrderParams();
-			InstrumentModel instrument = instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-			quantity=this.cacheQuantity.get(cacheInstrument.get(instrument.getInstrumentToken()).getTradingsymbol());
+			Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
+			quantity=this.cacheQuantity.get(instrument.getTradingsymbol());
 			if(quantity==0) {
 				quantity=2;
 			}
 				orderParams.quantity = instrument.getLot_size()*quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
-				orderParams.tradingsymbol = instrument.getTradingSymbol();
+				orderParams.tradingsymbol = instrument.getTradingsymbol();
 				orderParams.product = Constants.PRODUCT_MIS;
 				orderParams.exchange = Constants.EXCHANGE_NFO;
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
@@ -395,12 +394,12 @@ public class KiteConnectService {
 				Order order=null;
 				
 				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
-					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrumentToken()));
+					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrument_token()));
 					order=new Order();
 					order.exchangeOrderId="1400000006412993";
 					order.disclosedQuantity="0";
 					order.validity="Day";
-					order.tradingSymbol=instrument.getTradingSymbol();
+					order.tradingSymbol=instrument.getTradingsymbol();
 					order.orderVariety=Constants.VARIETY_REGULAR;
 					order.userId=tradeRequest.getUserId();
 					order.orderType=orderParams.orderType;
@@ -416,7 +415,7 @@ public class KiteConnectService {
 					order.pendingQuantity="0.0";
 					order.orderTimestamp=new Date();
 					order.exchangeTimestamp=new Date();
-					order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrumentToken());
+					order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrument_token());
 					order.transactionType=orderParams.transactionType;
 					order.filledQuantity=""+orderParams.quantity;
 					order.parentOrderId="";
@@ -426,13 +425,13 @@ public class KiteConnectService {
 					//trailStopLossRepository.save(data);
 					mockCheckOrderStatus(tradeRequest,order);
 				}
-				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrumentToken())) {
+				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrument_token())) {
 						LOGGER.info("Placing sell order overidding super trend... "+tradeRequest.getInstrumentToken());
 						order=new Order();
 						order.exchangeOrderId="1400000006412993";
 						order.disclosedQuantity="0";
 						order.validity="Day";
-						order.tradingSymbol=instrument.getTradingSymbol();
+						order.tradingSymbol=instrument.getTradingsymbol();
 						order.orderVariety=Constants.VARIETY_REGULAR;
 						order.userId=tradeRequest.getUserId();
 						order.orderType=orderParams.orderType;
@@ -448,7 +447,7 @@ public class KiteConnectService {
 						order.pendingQuantity="0.0";
 						order.orderTimestamp=new Date();
 						order.exchangeTimestamp=new Date();
-						order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrumentToken());
+						order.averagePrice=""+cacheLastTradedPrice.get(instrument.getInstrument_token());
 						order.transactionType=orderParams.transactionType;
 						order.filledQuantity=""+orderParams.quantity;
 						order.parentOrderId="";
@@ -492,9 +491,10 @@ public class KiteConnectService {
 		try {
 		KiteConnect kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
 		OrderParams orderParams = new OrderParams();
-		InstrumentModel instrumentList = instrumentRepository
-				.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-		int lot_size = instrumentList.getLot_size();
+		Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
+		
+	
+		int lot_size = instrument.getLot_size();
 		int quantity = tradeRequest.getQuantity();
 		if (quantity % lot_size == 0 && kiteConnect != null) {
 			
@@ -504,7 +504,7 @@ public class KiteConnectService {
 		orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
 		orderParams.price = lastTradedPrice+.5;
 		orderParams.transactionType = Constants.TRANSACTION_TYPE_BUY;
-		orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+		orderParams.tradingsymbol = instrument.getTradingsymbol();
 		orderParams.trailingStoploss = 1.0;
 		orderParams.stoploss = 5.0;
 		orderParams.exchange = Constants.EXCHANGE_NSE;
@@ -540,9 +540,8 @@ public class KiteConnectService {
 				orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
 				orderParams.price = tradeRequest.getPrice();
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
-				InstrumentModel instrumentList = instrumentRepository
-						.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
-				orderParams.tradingsymbol = instrumentList.getTradingSymbol();
+				Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
+				orderParams.tradingsymbol = instrument.getTradingsymbol();
 				orderParams.trailingStoploss = tradeRequest.getTrailingStopLossPrice();
 				orderParams.stoploss = tradeRequest.getStopLossPrice();
 				orderParams.exchange = Constants.EXCHANGE_NSE;
@@ -866,6 +865,7 @@ public class KiteConnectService {
 	public void tickerUsage(KiteConnect kiteConnect, final ArrayList<Long> tokens)
 			throws IOException, WebSocketException, KiteException {
 		final KiteTicker tickerProvider = new KiteTicker(kiteConnect.getAccessToken(), kiteConnect.getApiKey());
+		
 		tickerProvider.setOnConnectedListener(new OnConnect() {
 			
 			@Override
@@ -912,6 +912,8 @@ public class KiteConnectService {
 						customTickBarList.addTick(tickz);
 						cacheLatestTick.put(tick.getInstrumentToken(), tick);
 						cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
+						repository.save(tickz);
+						//LOGGER.info(tickz.toString());
 						if(cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 							calculateTrailStoLoss(tick.getInstrumentToken());
 						}
@@ -997,14 +999,15 @@ public class KiteConnectService {
 						try {
 							Tick tick = list.get(j);
 							com.equitybot.trade.db.mongodb.tick.domain.Tick tickz = convertTickModel(tick);
-							LOGGER.info("Back test: "+tickz.toString());
+							//LOGGER.info("Back test: "+tickz.toString());
 							customTickBarList.backTest(tickz);
 							cacheLatestTick.put(tick.getInstrumentToken(), tick);
 							cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
 							if(trailStopLossFeature.equalsIgnoreCase("true") && cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 								calculateTrailStoLoss(tick.getInstrumentToken());
 							}
-							Thread.sleep(300);
+							repository.save(tickz);
+							Thread.sleep(100);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}

@@ -1,6 +1,8 @@
 package com.equitybot.trade.ws.controller.main;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -18,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.ignite.configs.IgniteConfig;
 import com.equitybot.trade.ws.service.kite.KiteConnectService;
@@ -50,6 +51,9 @@ public class InitiateKiteController {
 	private IgniteCache<String, Double> cacheStopLossValue;
 	private IgniteCache<String, Integer> cacheQuantity;
 	
+	private IgniteCache<Long, Boolean> startTrade;
+	
+	
 	
 	public InitiateKiteController() {
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>("CacheMaxTrailStopLoss");
@@ -66,6 +70,9 @@ public class InitiateKiteController {
 		
 		CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
 		this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
+		
+		CacheConfiguration<Long, Boolean> ccfgcStartTrade = new CacheConfiguration<Long, Boolean>("CacheStartTrade");
+		 this.startTrade = igniteConfig.getInstance().getOrCreateCache(ccfgcStartTrade);
 	}
 	
 	
@@ -84,7 +91,7 @@ public class InitiateKiteController {
 			@PathVariable("requestToken") String requestToken,
 			@PathVariable("fromDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date fromDate,
 			@PathVariable("toDate") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date toDate,
-			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) {
+			@RequestBody ArrayList<Long> instrumentTokens, @PathVariable("interval") String interval) throws ParseException {
 		try {
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken);
 			List<Instrument> list=tradePortZerodhaConnect.getAllInstruments(kiteconnect);
@@ -103,7 +110,18 @@ public class InitiateKiteController {
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(true);
-			return tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, fromDate, toDate, interval, false);
+			
+			///
+			
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+	        Long dayFriction = 86400000L;
+			
+			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
+            Date historicalFromDate =dateFormat.parse(dateFormat.format(new Date(historicalToDate.getTime()-dayFriction))); 
+			///
+			
+			return tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate, historicalToDate, interval, false);
 		} catch (JSONException | IOException | KiteException e) {
 			return null;
 		}
@@ -113,17 +131,15 @@ public class InitiateKiteController {
 	@PostMapping("/process/v1.0/{userId}/{requestToken}/{backTestingFlag}")
 	public void startTick(@PathVariable("userId") String userId, @PathVariable("requestToken") String requestToken,
 
-			@RequestBody ArrayList<Long> instrumentTokens) {
+			@RequestBody ArrayList<Long> instrumentTokens) throws ParseException  {
 
 		try {
-			
+			tradePortZerodhaConnect.setBackTestFlag(true);
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken);
 			List<Instrument> list=tradePortZerodhaConnect.getAllInstruments(kiteconnect);
 			if(list!=null && list.size()>0) {
 				for (Instrument instrument : list) {
 					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
-					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
-					cacheQuantity.put(instrument.getTradingsymbol(), 2);
 				}
 			}
 			
@@ -132,6 +148,21 @@ public class InitiateKiteController {
 					Long long1 = (Long) iterator.next();
 					this.cacheMaxTrailStopLoss.put(long1, 0.0);
 					this.cacheTrailStopLossSignal.put(long1, false);
+					Instrument instrument=this.cacheInstrument.get(long1);
+					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
+					cacheQuantity.put(instrument.getTradingsymbol(), 2);
+					startTrade.put(long1, false);
+				}
+			}
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	        Long dayFriction = 86400000L;
+			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
+            Date historicalFromDate =dateFormat.parse(dateFormat.format(new Date(historicalToDate.getTime()-(dayFriction)))); 
+            tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate, historicalToDate, "minute", false);
+			if(instrumentTokens!=null && instrumentTokens.size()>0) {
+				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
+					Long long1 = (Long) iterator.next();
+					startTrade.put(long1, true);
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(false);

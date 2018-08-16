@@ -67,7 +67,6 @@ public class CustomTickBarList {
 	public synchronized void addTick(Tick tick) {
 		CustomTickBar customTickBar = workingTickBarMap.get(tick.getInstrumentToken());
 		if (customTickBar == null) {
-			logger.info("Each Bar Size in: "+ this.eachBarSize);
 			customTickBar = new CustomTickBar(tick.getInstrumentToken(), this.eachBarSize);
 			workingTickBarMap.put(tick.getInstrumentToken(), customTickBar);
 		}
@@ -84,8 +83,7 @@ public class CustomTickBarList {
 	}
 
 	private void addInSeries(CustomTickBar customTickBar) {
-		Duration barDuration = Duration.ofSeconds(60);
-
+		Duration barDuration = Duration.ofSeconds(300);
 		Bar bar = new BaseBar(barDuration, customTickBar.getEndTime(), Decimal.valueOf(customTickBar.getOpenPrice()),
 				Decimal.valueOf(customTickBar.getHighPrice()), Decimal.valueOf(customTickBar.getLowPrice()),
 				Decimal.valueOf(customTickBar.getClosePrice()), Decimal.valueOf(customTickBar.getVolume()),
@@ -97,7 +95,6 @@ public class CustomTickBarList {
 			this.timeSeriesMap.put(customTickBar.getInstrumentToken(), timeSeries);
 		}
 		timeSeries.addBar(bar);
-		logger.info("Bar Count in series: "+timeSeries.getBarCount());
 		cache.put(timeSeries.getName(), timeSeries);
 		ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(timeSeriesProducerTopic,timeSeries.getName());
 		future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
@@ -149,7 +146,7 @@ public class CustomTickBarList {
 			future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 				@Override
 				public void onSuccess(SendResult<String, String> result) {
-					logger.info("Sent message: " + result);
+					//logger.info("Sent message: " + result);
 				}
 
 				@Override

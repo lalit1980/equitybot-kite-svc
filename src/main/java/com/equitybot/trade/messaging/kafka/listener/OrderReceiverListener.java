@@ -51,6 +51,7 @@ public class OrderReceiverListener {
 	}
 
 	public void placeTradeOrder(OrderRequestDTO tradeBO) {
+		logger.info("Received Order for: "+tradeBO.toString());
 		if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {
 			buyOrderService.buyOrder(tradeBO);
 		} else if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_SELL)) {
