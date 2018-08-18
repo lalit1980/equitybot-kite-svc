@@ -298,12 +298,13 @@ public class KiteConnectService {
 			double stopLoss=0.0;
 			double stopLossLimit=this.cacheMaxTrailStopLoss.get(instrumentToken);
 			double purcahsePrice=this.cachePurchasedPrice.get(instrumentToken);
-			//double stopLossDistance=5;
+			
 			stopLoss=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
 			if(stopLoss<=0) {
 				stopLoss=20;
 			}
 			double stopLossDistance=((purcahsePrice*stopLoss)/100);
+			double targetPrice=purcahsePrice+stopLossDistance;
 			double currentPrice=this.cacheLastTradedPrice.get(instrumentToken);
 			if (stopLossLimit==0) {
 	            stopLossLimit = purcahsePrice-stopLossDistance;
@@ -313,9 +314,9 @@ public class KiteConnectService {
 	        if (currentValue>referenceValue) {
 	            stopLossLimit = currentValue-stopLossDistance;
 	        }
-	        if(currentPrice<=stopLossLimit) {
+	        if(currentPrice<=stopLossLimit || currentPrice>=targetPrice) {
 	        	OrderRequestDTO tradeRequest=new OrderRequestDTO();
-	        	tradeRequest.setUserId("XS2241");
+	        	tradeRequest.setUserId("WU6870");
 	        	tradeRequest.setInstrumentToken(instrumentToken);
 	        	tradeRequest.setTransactionType("Sell");
 	        	tradeRequest.setTradingsymbol(this.cacheInstrument.get(instrumentToken).getTradingsymbol());
@@ -326,7 +327,7 @@ public class KiteConnectService {
 	        		LOGGER.info("Inside Trail Stop Loss Hit to place Mock sell order: ");
 	        		placeMockOrder(tradeRequest);
 	    		}else {
-	    			LOGGER.info("Inside Trail Stop Loss Hit to place actual sell order: ");
+	    			LOGGER.info("Inside Trail Stop Loss Hit "+ tradeRequest.getTradingsymbol()+" to place actual sell order Or Hit Target Price: "+targetPrice );
 	    			placeOrder(tradeRequest);
 	    		}
 	        	

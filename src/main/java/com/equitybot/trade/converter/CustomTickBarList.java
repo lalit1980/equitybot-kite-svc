@@ -83,7 +83,7 @@ public class CustomTickBarList {
 	}
 
 	private void addInSeries(CustomTickBar customTickBar) {
-		Duration barDuration = Duration.ofSeconds(300);
+		Duration barDuration = Duration.ofSeconds(60);
 		Bar bar = new BaseBar(barDuration, customTickBar.getEndTime(), Decimal.valueOf(customTickBar.getOpenPrice()),
 				Decimal.valueOf(customTickBar.getHighPrice()), Decimal.valueOf(customTickBar.getLowPrice()),
 				Decimal.valueOf(customTickBar.getClosePrice()), Decimal.valueOf(customTickBar.getVolume()),
