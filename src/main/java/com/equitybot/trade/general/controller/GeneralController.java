@@ -1,9 +1,17 @@
 package com.equitybot.trade.general.controller;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.query.ScanQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,6 +28,8 @@ public class GeneralController {
 	IgniteConfig igniteConfig;
 	private IgniteCache<String, Double> cacheStopLossValue;
 	private IgniteCache<String, Integer> cacheQuantity;
+	private IgniteCache<Long, String> cacheTradeOrder;
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	
 	public GeneralController() {
 		CacheConfiguration<String, Double> ccfgcStopLoss = new CacheConfiguration<String, Double>("CacheStopLoss");
@@ -27,6 +37,9 @@ public class GeneralController {
 		
 		CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
 		this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
+		
+		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
+		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
 		
 	}
 
@@ -61,6 +74,35 @@ public class GeneralController {
 		if(cacheStopLossValue.containsKey(instrumentToken)) {
 			cacheStopLossValue.remove(instrumentToken);
 		}
+	}
+	@GetMapping("/general/v1.0")
+	public Map<Long, String> findAllOrderInCache() {
+		Set<Long> keys = new HashSet<Long>();
+		this.cacheTradeOrder.query(new ScanQuery<>(null)).forEach(entry -> keys.add((Long) entry.getKey()));
+		Map<Long, String> map=this.cacheTradeOrder.getAll(keys);
+		for (Map.Entry<Long, String> entry : map.entrySet()) {
+			logger.info("Key = " + entry.getKey() + ", Value = " + entry.getValue());
+		}
+		return map;
+	}
+	
+	@DeleteMapping({ "/general/v1.0/deleteOrderCache/{instrumentToken}" })
+	public void deleteOrderFromCache(@PathVariable("instrumentToken") Long instrumentToken) {
+		if(this.cacheTradeOrder.containsKey(instrumentToken)) {
+			this.cacheTradeOrder.remove(instrumentToken);
+		}
+		if(this.cacheTradeOrder.containsKey(instrumentToken)) {
+			this.cacheTradeOrder.remove(instrumentToken);
+		}
+	}
+	
+	@DeleteMapping({ "/general/v1.0/deleteOrderCache" })
+	public void deleteAllOrderFromCache() {
+		this.cacheTradeOrder.removeAll();
+	}
+	@GetMapping("/general/v1.0/getOrderInCache/{instrumentToken}")
+	public String findOrderInCache(@PathVariable("instrumentToken") Long tradingSymbol) {
+		return this.cacheTradeOrder.get(tradingSymbol);
 	}
 	
 }
