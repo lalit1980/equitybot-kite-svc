@@ -249,7 +249,7 @@ public class KiteConnectService {
 				orderParams.validity = Constants.VALIDITY_DAY;
 				orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
 				Order order=null;
-				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy")) {
+				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && (!cacheTradeOrder.containsKey(instrument.getInstrument_token()))) {
 					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrument_token()));
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
 				}
