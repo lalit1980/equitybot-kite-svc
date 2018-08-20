@@ -38,3 +38,5 @@ tick:
   backTestFlag: false
   
 trailStopLossFeature: Yes
+supertrend:
+  userid: WU6870

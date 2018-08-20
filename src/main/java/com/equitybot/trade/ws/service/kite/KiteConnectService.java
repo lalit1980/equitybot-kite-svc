@@ -69,6 +69,9 @@ import com.zerodhatech.ticker.OnTicks;
 public class KiteConnectService {
 	private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
+	@Value("${supertrend.userid}")
+	private String userIdTrade;
+	
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 	
@@ -314,9 +317,9 @@ public class KiteConnectService {
 	        if (currentValue>referenceValue) {
 	            stopLossLimit = currentValue-stopLossDistance;
 	        }
-	        if(currentPrice<=stopLossLimit || currentPrice>=targetPrice) {
+	        if(currentPrice<=stopLossLimit || currentPrice>=targetPrice+1) {
 	        	OrderRequestDTO tradeRequest=new OrderRequestDTO();
-	        	tradeRequest.setUserId("WU6870");
+	        	tradeRequest.setUserId(userIdTrade);
 	        	tradeRequest.setInstrumentToken(instrumentToken);
 	        	tradeRequest.setTransactionType("Sell");
 	        	tradeRequest.setTradingsymbol(this.cacheInstrument.get(instrumentToken).getTradingsymbol());
@@ -327,7 +330,7 @@ public class KiteConnectService {
 	        		LOGGER.info("Inside Trail Stop Loss Hit to place Mock sell order: ");
 	        		placeMockOrder(tradeRequest);
 	    		}else {
-	    			LOGGER.info("Inside Trail Stop Loss Hit "+ tradeRequest.getTradingsymbol()+" to place actual sell order Or Hit Target Price: "+targetPrice );
+	    			LOGGER.info("Inside Trail Stop Loss Hit "+ tradeRequest.getTradingsymbol()+" to place actual sell order Or Hit Target Price: "+targetPrice);
 	    			placeOrder(tradeRequest);
 	    		}
 	        	
@@ -511,7 +514,7 @@ public class KiteConnectService {
 		orderParams.exchange = Constants.EXCHANGE_NSE;
 		orderParams.validity = Constants.VALIDITY_DAY;
 		orderParams.squareoff = this.cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+200;
-		orderParams.product = Constants.PRODUCT_MIS;
+		orderParams.product = Constants.PRODUCT_NRML;
 		Order order10 = kiteConnect.placeOrder(orderParams, Constants.VARIETY_BO);
 		System.out.println(order10.orderId);
 		checkOrderStatus(tradeRequest,order10);
@@ -913,7 +916,7 @@ public class KiteConnectService {
 						customTickBarList.addTick(tickz);
 						cacheLatestTick.put(tick.getInstrumentToken(), tick);
 						cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
-						repository.save(tickz);
+						//repository.save(tickz);
 						//LOGGER.info(tickz.toString());
 						if(cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
 							calculateTrailStoLoss(tick.getInstrumentToken());

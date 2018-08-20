@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -27,7 +28,10 @@ import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Instrument;
+import com.zerodhatech.models.Position;
 import com.zerodhatech.models.Tick;
+
+import ch.qos.logback.classic.Logger;
 
 @RestController
 @RequestMapping("/api")
@@ -54,6 +58,7 @@ public class InitiateKiteController {
 	private IgniteCache<Long, Boolean> startTrade;
 	private IgniteCache<String, Double> cacheTargetPrice;
 	private IgniteCache<String, KiteConnect> cacheUserSession;
+	private IgniteCache<Long, String> cacheTradeOrder;
 
 	public InitiateKiteController() {
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>(
@@ -84,6 +89,9 @@ public class InitiateKiteController {
 		CacheConfiguration<String, KiteConnect> ccfgcKiteSession = new CacheConfiguration<String, KiteConnect>(
 				"CacheUserSession");
 		this.cacheUserSession = igniteConfig.getInstance().getOrCreateCache(ccfgcKiteSession);
+		
+		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
+		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
 	}
 
 	@GetMapping("/process/v1.0/{userId}/{requestToken}")
@@ -158,16 +166,39 @@ public class InitiateKiteController {
 					startTrade.put(long1, false);
 				}
 			}
+			
 			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			Long dayFriction = 86400000L;
 			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
 			Date historicalFromDate = dateFormat
-					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction))));
+					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*3))));
 			tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate,
 					historicalToDate, "minute", false);
+			
+			Map<String, List<Position>> map=tradePortZerodhaConnect.getPositions(userId, requestToken);
+			if(map!=null) {
+				for (Map.Entry<String, List<Position>> entry : map.entrySet()) {
+					if(entry.getKey().equalsIgnoreCase("net")) {
+						List<Position> positionList=entry.getValue();
+						if(positionList!=null && positionList.size()>0) {
+							for(int i=0;i<positionList.size();i++) {
+								Position position=positionList.get(i);
+								System.out.println(position.instrumentToken+" Started: "+position.netQuantity+" Total profit loss: "+position.pnl);
+								if(position.netQuantity>0) {
+									instrumentTokens.add(Long.parseLong(position.instrumentToken));
+									System.out.println(position.instrumentToken+" Started: "+position.netQuantity);
+								}
+							}
+						}
+					}
+				}
+			}else {
+				System.out.println("open Position is null....");
+			}
 			if (instrumentTokens != null && instrumentTokens.size() > 0) {
 				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
 					Long long1 = (Long) iterator.next();
+					System.out.println("Trade Started for instruments: "+this.cacheInstrument.get(long1).getTradingsymbol());
 					startTrade.put(long1, true);
 				}
 			}

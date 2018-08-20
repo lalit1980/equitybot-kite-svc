@@ -6,14 +6,8 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +24,6 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTimeSeries;
 import org.ta4j.core.Decimal;
 import org.ta4j.core.TimeSeries;
-
 
 import com.equitybot.trade.db.mongodb.tick.domain.Tick;
 import com.equitybot.trade.ignite.configs.IgniteConfig;
@@ -100,7 +93,7 @@ public class CustomTickBarList {
 		future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
 			@Override
 			public void onSuccess(SendResult<String, String> result) {
-				logger.info("Sent message: " + result);
+				//logger.info("Sent message: " + result);
 			}
 
 			@Override
