@@ -246,7 +246,7 @@ public class KiteConnectService {
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 				orderParams.tradingsymbol = instrument.getTradingsymbol();
-				orderParams.product = Constants.PRODUCT_MIS;
+				orderParams.product = Constants.PRODUCT_NRML;
 				orderParams.exchange = Constants.EXCHANGE_NFO;
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
 				orderParams.validity = Constants.VALIDITY_DAY;
