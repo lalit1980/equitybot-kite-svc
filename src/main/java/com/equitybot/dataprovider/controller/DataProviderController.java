@@ -3,6 +3,8 @@ package com.equitybot.dataprovider.controller;
 import com.equitybot.common.model.TickDTO;
 import com.equitybot.dataprovider.service.CSVDataProvider;
 import com.equitybot.dataprovider.service.HistoricalDataService;
+import com.equitybot.dataprovider.source.LiveDataSource;
+import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,12 +31,13 @@ public class DataProviderController {
     @Autowired
     private CSVDataProvider csvDataProvider;
 
-    @PostMapping("/live/tiger")
-    public void tigerLivelData(
-            @RequestBody List<Long> instrumentTokens) {
+    @Autowired
+    private LiveDataSource liveDataSource;
 
+    @PostMapping("/live/tiger")
+    public void tigerLivelData(@RequestBody ArrayList<Long> instrumentTokens) throws KiteException {
         logger.info(" -- tigerHistoricalData");
-        //  tiger(fromDate, toDate, instrumentTokens, interval, false);
+        liveDataSource.subscribe(instrumentTokens);
     }
 
 

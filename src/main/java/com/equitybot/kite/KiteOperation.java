@@ -1,6 +1,6 @@
 package com.equitybot.kite;
 
-import com.equitybot.kite.model.OrderRequestDTO;
+import com.equitybot.common.model.OrderRequestDTO;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.*;
 import org.slf4j.Logger;

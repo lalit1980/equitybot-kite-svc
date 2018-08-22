@@ -26,7 +26,6 @@ public class DataProviderService {
 
     public void serve(TickDTO tickDTO) {
         System.out.println("______________________ Tick _______________________________");
-
         try {
             hlocBarService.serve(tickDTO);
             if (!tickDTO.getBarDTOS().isEmpty()) {
@@ -38,7 +37,5 @@ public class DataProviderService {
             logger.error("error : ", e);
         }
         System.out.println("_____________________________________________________");
-        System.out.println("");
-
     }
 }

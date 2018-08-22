@@ -30,7 +30,7 @@ public class DataMapper {
     private DataMapper() {
     }
 
-    public static TickDTO mapInTickModel(Tick tick) {
+    public static TickDTO mapInTick(Tick tick) {
         return tickModelMapper.map(tick);
     }
 

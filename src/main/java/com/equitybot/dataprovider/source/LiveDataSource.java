@@ -1,6 +1,7 @@
 package com.equitybot.dataprovider.source;
 
-import com.equitybot.dataprovider.service.LiveDataPreparationService;
+import com.equitybot.dataprovider.service.live.LiveDataPreparationService;
+import com.equitybot.kite.KiteConnection;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Order;
@@ -12,21 +13,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpdate, OnError, OnTicks {
 
-    private static Set<Long> tokens;
-
     private static List<Long> latestTokens;
-
-    static {
-        tokens = Collections.synchronizedSet(new HashSet<>());
-    }
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private KiteTicker tickerProvider;
+
+    @Autowired
+    private KiteConnection kiteConnection;
+
     @Autowired
     private LiveDataPreparationService liveDataPreparationService;
 
@@ -59,9 +59,7 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
         if (ticks != null && !ticks.isEmpty() && ticks.get(0).getMode() != null) {
             try {
                 liveDataPreparationService.serve(ticks, latestTokens);
-            } catch (KiteException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
+            } catch (KiteException | IOException e) {
                 e.printStackTrace();
             }
         }
@@ -80,6 +78,14 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
         tickerProvider.connect();
     }
 
+    public void subscribe(ArrayList<Long> instruments) throws KiteException {
+        if (this.tickerProvider == null && !tickerProvider.isConnectionOpen()) {
+            initConnect(kiteConnection.session());
+        }
+        tickerProvider.subscribe(instruments);
+        tickerProvider.setMode(instruments, KiteTicker.modeFull);
+    }
+
     public void disconnect() {
         tickerProvider.disconnect();
     }
@@ -89,19 +95,11 @@ public final class LiveDataSource implements OnConnect, OnDisconnect, OnOrderUpd
     }
 
     public void unsubscribe(ArrayList<Long> instruments) {
-        tokens.removeAll(instruments);
         tickerProvider.unsubscribe(instruments);
     }
 
-    public void subscribe(ArrayList<Long> instruments) {
-        tokens.addAll(instruments);
-        tickerProvider.subscribe(instruments);
-        latestTokens = Collections.synchronizedList(instruments);
-        tickerProvider.setMode(instruments, KiteTicker.modeFull);
-    }
-
-    public Set<Long> getSubscribeInstruments() {
-        return tokens;
+    public List<Long> getSubscribeInstruments() {
+        return this.latestTokens;
     }
 
 }

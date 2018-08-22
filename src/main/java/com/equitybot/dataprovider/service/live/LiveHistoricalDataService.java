@@ -4,14 +4,15 @@ import com.equitybot.common.model.TickDTO;
 import com.zerodhatech.models.HistoricalData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+@Service
 public class LiveHistoricalDataService {
-
 
     @Autowired
     private HOLCLiveHistoricalDataService holcLiveHistoricalDataService;
@@ -27,6 +28,4 @@ public class LiveHistoricalDataService {
         CompletableFuture.allOf(completableFutureArray).join();
         return CompletableFuture.completedFuture(instrument);
     }
-
-
 }

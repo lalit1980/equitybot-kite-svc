@@ -1,4 +1,4 @@
-package com.equitybot.kite.model;
+package com.equitybot.common.model;
 
 import java.io.Serializable;
 

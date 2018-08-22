@@ -22,6 +22,7 @@ public class TickDTO {
     private double oi;
     private double oiDayHigh;
     private double oiDayLow;
+    private boolean live;
     private Date tickTimestamp;
     private Map<String, ArrayList<DepthModel>> depth;
     private List<BarDTO> barDTOS;
@@ -198,6 +199,14 @@ public class TickDTO {
         this.barDTOS = barDTOS;
     }
 
+    public boolean isLive() {
+        return live;
+    }
+
+    public void setLive(boolean live) {
+        this.live = live;
+    }
+
     @Override
     public String toString() {
         return "TickDTO{" +
@@ -219,6 +228,7 @@ public class TickDTO {
                 ", oi=" + oi +
                 ", oiDayHigh=" + oiDayHigh +
                 ", oiDayLow=" + oiDayLow +
+                ", live=" + live +
                 ", tickTimestamp=" + tickTimestamp +
                 ", depth=" + depth +
                 ", barDTOS=" + barDTOS +

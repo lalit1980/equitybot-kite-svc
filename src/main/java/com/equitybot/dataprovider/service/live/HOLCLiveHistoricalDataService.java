@@ -7,11 +7,13 @@ import com.equitybot.dataprovider.util.DataMapper;
 import com.zerodhatech.models.HistoricalData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
 import org.ta4j.core.Decimal;
 
 import java.text.ParseException;
 import java.util.concurrent.CompletableFuture;
 
+@Service
 public class HOLCLiveHistoricalDataService {
 
     @Autowired
