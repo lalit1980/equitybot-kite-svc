@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.equitybot.trade.ignite.configs.IgniteConfig;
+import com.zerodhatech.kiteconnect.utils.Constants;
 
 @RestController
 @RequestMapping("/api")
@@ -63,7 +64,6 @@ public class GeneralController {
 			@PathVariable("stopLoss") double stopLoss) {
 		cacheQuantity.put(instrumentToken, quantity);
 		cacheStopLossValue.put(instrumentToken, stopLoss);
-		
 	}
 
 	@DeleteMapping({ "/general/v1.0/{instrumentToken}" })
@@ -94,6 +94,12 @@ public class GeneralController {
 		if(this.cacheTradeOrder.containsKey(instrumentToken)) {
 			this.cacheTradeOrder.remove(instrumentToken);
 		}
+	}
+	@PostMapping({ "/general/v1.0/addOrderInCache/{instrumentToken}/{signal}" })
+	public String addTradeOrdeInCache(@PathVariable("instrumentToken") Long instrumentToken,
+			@PathVariable("signal") String signal) {
+		this.cacheTradeOrder.put(instrumentToken, signal.toUpperCase().trim());
+		return "Instrument Stop Loss: "+this.cacheTradeOrder.get(instrumentToken);
 	}
 	
 	@DeleteMapping({ "/general/v1.0/deleteOrderCache" })

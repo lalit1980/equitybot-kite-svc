@@ -76,7 +76,7 @@ public class CustomTickBarList {
 	}
 
 	private void addInSeries(CustomTickBar customTickBar) {
-		Duration barDuration = Duration.ofSeconds(60);
+		Duration barDuration = Duration.ofSeconds(this.eachBarSize);
 		Bar bar = new BaseBar(barDuration, customTickBar.getEndTime(), Decimal.valueOf(customTickBar.getOpenPrice()),
 				Decimal.valueOf(customTickBar.getHighPrice()), Decimal.valueOf(customTickBar.getLowPrice()),
 				Decimal.valueOf(customTickBar.getClosePrice()), Decimal.valueOf(customTickBar.getVolume()),
@@ -112,7 +112,7 @@ public class CustomTickBarList {
 	}
 
 	public void backTest(Tick tick) {
-		Duration barDuration = Duration.ofSeconds(60);
+		Duration barDuration = Duration.ofSeconds(this.eachBarSize);
 		ZoneId istZone = ZoneId.of("Asia/Kolkata");
 		if (true) {
 			ZonedDateTime barEndTime = ZonedDateTime.ofInstant(tick.getTickTimestamp().toInstant(), istZone);

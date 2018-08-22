@@ -176,12 +176,9 @@ public class KiteConnectService {
 	}
 
 	/** Gets Margin. */
-	public double getMargins(String userId, String requestToken) throws KiteException, IOException {
-		// Get margins returns margin model, you can pass equity or commodity as
-		// arguments to get margins of respective segments.
-		// Margins margins = kiteConnect.getMargins("equity");
+	public Map<String, Margin> getMargins(String userId, String requestToken) throws KiteException, IOException {
 		KiteConnect kiteConnect = getKiteConnectSession(userId, requestToken);
-		double avialbleFund=0;
+		/*double avialbleFund=0;
 		//Margin margins = kiteConnect.getMargins(segment);
 		Map<String, Margin> margins=kiteConnect.getMargins();
 		for (Map.Entry<String, Margin> entry : margins.entrySet()) {
@@ -189,8 +186,8 @@ public class KiteConnectService {
 				avialbleFund=Double.parseDouble(entry.getValue().available.cash);
 				LOGGER.info("Avaivle Fund: "+avialbleFund);
 			}
-		}
-		return avialbleFund;
+		}*/
+		return kiteConnect.getMargins();
 	}
 	/** Get all positions. */
 	public Map<String, List<Position>> getPositions(String userId, String requestToken) throws KiteException, IOException {

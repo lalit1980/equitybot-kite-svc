@@ -139,15 +139,15 @@ public class OrderServiceController {
 
 	}
 	@GetMapping("/tradeorder/v1.0/margin/userId/{userId}/requestToken/{requestToken}")
-	public double findMarginsFromZerodha(@PathVariable("userId") String userId,
+	public Map<String, Margin> findMarginsFromZerodha(@PathVariable("userId") String userId,
 			@PathVariable("requestToken") String requestToken) {
+		Map<String, Margin> marginList=null;
 		try {
-			double marginList = kiteConnectService.getMargins(userId, requestToken);
-			return marginList;
+			marginList = kiteConnectService.getMargins(userId, requestToken);
+			
 		} catch (IOException | KiteException e) {
 			e.printStackTrace();
-			return 0.0;
 		}
-
+		return marginList;
 	}
 }
