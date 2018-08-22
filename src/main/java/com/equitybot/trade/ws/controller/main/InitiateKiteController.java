@@ -118,7 +118,7 @@ public class InitiateKiteController {
 			if (list != null && list.size() > 0) {
 				for (Instrument instrument : list) {
 					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
-					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
+					cacheStopLossValue.put(instrument.getTradingsymbol(), 5.00);
 					cacheQuantity.put(instrument.getTradingsymbol(), 2);
 				}
 			}
@@ -160,7 +160,7 @@ public class InitiateKiteController {
 					this.cacheMaxTrailStopLoss.put(long1, 0.0);
 					this.cacheTrailStopLossSignal.put(long1, false);
 					Instrument instrument = this.cacheInstrument.get(long1);
-					cacheStopLossValue.put(instrument.getTradingsymbol(), 20.00);
+					cacheStopLossValue.put(instrument.getTradingsymbol(), 5.00);
 					this.cacheTargetPrice.put(instrument.getTradingsymbol(), 5.00);
 					this.cacheQuantity.put(instrument.getTradingsymbol(), 2);
 					startTrade.put(long1, false);

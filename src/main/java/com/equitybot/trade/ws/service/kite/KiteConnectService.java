@@ -243,7 +243,7 @@ public class KiteConnectService {
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 				orderParams.tradingsymbol = instrument.getTradingsymbol();
-				orderParams.product = Constants.PRODUCT_NRML;
+				orderParams.product = Constants.PRODUCT_MIS;
 				orderParams.exchange = Constants.EXCHANGE_NFO;
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
 				orderParams.validity = Constants.VALIDITY_DAY;
@@ -295,15 +295,16 @@ public class KiteConnectService {
 	}
 	protected void calculateTrailStoLoss(long instrumentToken) {
 		if(this.cachePurchasedPrice!=null && this.cachePurchasedPrice.get(instrumentToken)!=null) {
-			double stopLoss=0.0;
+			double stopLossDistance=0.0;
 			double stopLossLimit=this.cacheMaxTrailStopLoss.get(instrumentToken);
 			double purcahsePrice=this.cachePurchasedPrice.get(instrumentToken);
 			
-			stopLoss=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
-			if(stopLoss<=0) {
-				stopLoss=20;
+			stopLossDistance=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
+			if(stopLossDistance<=0) {
+				stopLossDistance=5;
 			}
-			double stopLossDistance=((purcahsePrice*stopLoss)/100);
+			
+			//double stopLossDistance=((purcahsePrice*stopLoss)/100);
 			double targetPrice=purcahsePrice+stopLossDistance;
 			double currentPrice=this.cacheLastTradedPrice.get(instrumentToken);
 			if (stopLossLimit==0) {
@@ -314,7 +315,7 @@ public class KiteConnectService {
 	        if (currentValue>referenceValue) {
 	            stopLossLimit = currentValue-stopLossDistance;
 	        }
-	        if(currentPrice<=stopLossLimit || currentPrice>=targetPrice+1) {
+	        if(currentPrice<=stopLossLimit || currentPrice>=targetPrice) {
 	        	OrderRequestDTO tradeRequest=new OrderRequestDTO();
 	        	tradeRequest.setUserId(userIdTrade);
 	        	tradeRequest.setInstrumentToken(instrumentToken);
@@ -322,22 +323,18 @@ public class KiteConnectService {
 	        	tradeRequest.setTradingsymbol(this.cacheInstrument.get(instrumentToken).getTradingsymbol());
 	        	tradeRequest.setTag("TrailST");
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, 0.0);
-	        	LOGGER.info("King got fucked Stop Loss got hit for stock: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("$$$$$$$Trail StopLoss Hit: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice+ " Target Price: "+targetPrice );
 	        	if(isBackTestFlag()) {
-	        		LOGGER.info("Inside Trail Stop Loss Hit to place Mock sell order: ");
 	        		placeMockOrder(tradeRequest);
 	    		}else {
-	    			LOGGER.info("Inside Trail Stop Loss Hit "+ tradeRequest.getTradingsymbol()+" to place actual sell order Or Hit Target Price: "+targetPrice);
 	    			placeOrder(tradeRequest);
 	    		}
 	        	
 	        }else{
-	        	LOGGER.info("King Chutiye won't sell stock: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice);
+	        	LOGGER.info("Current Trail Stoploss status: "+this.cacheInstrument.get(instrumentToken).getTradingsymbol()+" Purchase Price: "+ purcahsePrice+" stopLossLimit:"+stopLossLimit+" stopLossDistance: "+stopLossDistance+" currentPrice:"+currentPrice+ " Target Price: "+targetPrice );
 	        	this.cacheMaxTrailStopLoss.put(instrumentToken, stopLossLimit);
 	        }
 	        
-		}else {
-			LOGGER.info("Purchase price is null");
 		}
     }
 	/*
@@ -457,8 +454,6 @@ public class KiteConnectService {
 						//trailStopLossRepository.save(data);
 						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
 						mockCheckOrderStatus(tradeRequest,order);
-				}else {
-					LOGGER.info("Order Sold by Trail stop loss.......");
 				}
 				
 				return order;
