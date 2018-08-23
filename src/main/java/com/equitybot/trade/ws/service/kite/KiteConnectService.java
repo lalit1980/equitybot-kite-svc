@@ -238,7 +238,7 @@ public class KiteConnectService {
 				Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
 				quantity=this.cacheQuantity.get(instrument.getTradingsymbol());
 				if(quantity==0) {
-					quantity=2;
+					quantity=35;
 				}
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
@@ -252,12 +252,16 @@ public class KiteConnectService {
 				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && (!cacheTradeOrder.containsKey(instrument.getInstrument_token()))) {
 					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(instrument.getInstrument_token()));
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+					checkOrderStatus(tradeRequest,order);
 				}
 				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(instrument.getInstrument_token())) {
 					LOGGER.info("Placing sell order... "+tradeRequest.getInstrumentToken());
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+					cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
+					checkOrderStatus(tradeRequest,order);
 				}
-				checkOrderStatus(tradeRequest,order);
+				
 				return order;
 				
 
@@ -301,7 +305,7 @@ public class KiteConnectService {
 			
 			stopLossDistance=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
 			if(stopLossDistance<=0) {
-				stopLossDistance=5;
+				stopLossDistance=20;
 			}
 			
 			//double stopLossDistance=((purcahsePrice*stopLoss)/100);
