@@ -28,7 +28,8 @@ public class HistoricalDataHService {
     private HistoricalDataHSource historicalDataHSource;
 
     @Async("dataProviderTaskPool")
-    public CompletableFuture<TickDTO> serve(Long instrument, Date fromDate, Date toDate, String interval, boolean continuous) {
+    public CompletableFuture<TickDTO> serve(Long instrument, Date fromDate, Date toDate, String interval,
+                                            boolean continuous, boolean dummyData) {
         TickDTO tickDTO = null;
 
         try {
@@ -39,6 +40,7 @@ public class HistoricalDataHService {
             if (historicalDatas != null && !historicalDatas.dataArrayList.isEmpty()) {
                 for (HistoricalData historicalData : historicalDatas.dataArrayList) {
                     tickDTO = DataMapper.mapInTick(historicalData, instrument);
+                    tickDTO.setDummyData(dummyData);
                     logger.info(" Tick Received : {}", tickDTO);
                     dataProviderHService.serve(tickDTO);
                 }

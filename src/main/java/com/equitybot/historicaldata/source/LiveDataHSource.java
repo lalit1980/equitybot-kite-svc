@@ -1,34 +1,29 @@
 package com.equitybot.historicaldata.source;
 
-import com.equitybot.dataprovider.service.live.LiveDataPreparationService;
+import com.equitybot.historicaldata.service.HistoricalLiveDataService;
 import com.equitybot.kite.KiteConnection;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Order;
 import com.zerodhatech.models.Tick;
 import com.zerodhatech.ticker.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUpdate, OnError, OnTicks {
 
-    private static List<Long> latestTokens;
-
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private KiteTicker tickerProvider;
+   private KiteTicker tickerProvider;
 
     @Autowired
     private KiteConnection kiteConnection;
 
     @Autowired
-    private LiveDataPreparationService liveDataPreparationService;
+    private HistoricalLiveDataService historicalLiveDataService;
+
+    private static boolean on;
 
     @Override
     public void onConnected() {
@@ -41,7 +36,7 @@ public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUp
 
     @Override
     public void onOrderUpdate(Order order) {
-        logger.info("order update {}", order.orderId);
+        //logger.info("order update {}", order.orderId);
     }
 
     @Override
@@ -57,11 +52,7 @@ public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUp
     @Override
     public void onTicks(ArrayList<Tick> ticks) {
         if (ticks != null && !ticks.isEmpty() && ticks.get(0).getMode() != null) {
-            try {
-                liveDataPreparationService.serve(ticks, latestTokens);
-            } catch (KiteException | IOException e) {
-                e.printStackTrace();
-            }
+                historicalLiveDataService.serve();
         }
     }
 
@@ -84,6 +75,7 @@ public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUp
         }
         tickerProvider.subscribe(instruments);
         tickerProvider.setMode(instruments, KiteTicker.modeFull);
+        on = true;
     }
 
     public void disconnect() {
@@ -98,8 +90,7 @@ public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUp
         tickerProvider.unsubscribe(instruments);
     }
 
-    public List<Long> getSubscribeInstruments() {
-        return this.latestTokens;
+    public static boolean isOn() {
+        return on;
     }
-
 }
