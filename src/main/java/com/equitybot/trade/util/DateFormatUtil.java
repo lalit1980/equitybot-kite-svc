@@ -67,7 +67,7 @@ public class DateFormatUtil {
 	        }
 	}
 	public static void main(String[] args) {
-		test();
+		getCurrentISTTime(new Date());
 	}
 	
 	public static Date fromISO8601UTC(String dateStr, String dateFormat) {

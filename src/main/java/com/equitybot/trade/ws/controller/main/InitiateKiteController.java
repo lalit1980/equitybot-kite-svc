@@ -139,8 +139,10 @@ public class InitiateKiteController {
 
 	}
 
-	@PostMapping("/process/v1.0/{userId}/{requestToken}/{dayMonth}")
-	public void startTick(@PathVariable("userId") String userId, @PathVariable("requestToken") String requestToken,
+	@PostMapping("/process/v1.0/{userId}/{requestToken}/{calculateStoppLossFlag}")
+	public void startLiveTrade(@PathVariable("userId") String userId, 
+							   @PathVariable("requestToken") String requestToken, 
+							   @PathVariable("calculateStoppLossFlag") Boolean calculateStoppLossFlag,
 			@RequestBody ArrayList<Long> instrumentTokens) throws ParseException {
 
 		try {
@@ -171,7 +173,7 @@ public class InitiateKiteController {
 			Long dayFriction = 86400000L;
 			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
 			Date historicalFromDate = dateFormat
-					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*3))));
+					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*4))));
 			tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate,
 					historicalToDate, "minute", false);
 			
@@ -203,6 +205,7 @@ public class InitiateKiteController {
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(false);
+			tradePortZerodhaConnect.setCalculateStopLossFlag(calculateStoppLossFlag);
 			tradePortZerodhaConnect.tickerUsage(kiteconnect, instrumentTokens);
 		} catch (IOException | WebSocketException | KiteException e) {
 			e.printStackTrace();

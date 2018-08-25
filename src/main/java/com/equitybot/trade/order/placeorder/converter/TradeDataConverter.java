@@ -1,7 +1,6 @@
 package com.equitybot.trade.order.placeorder.converter;
 
 import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
-import com.equitybot.trade.util.DateFormatUtil;
 import com.zerodhatech.models.Order;
 
 public class TradeDataConverter {
@@ -14,11 +13,11 @@ public class TradeDataConverter {
 			dto.setDisclosedQuantity(order.disclosedQuantity);
 			dto.setExchange(order.exchange);
 			dto.setExchangeOrderId(order.exchangeOrderId);
-			dto.setExchangeTimestamp(DateFormatUtil.getCurrentISTTime(order.exchangeTimestamp));
+			dto.setExchangeTimestamp(order.exchangeTimestamp);
 			dto.setFilledQuantity(order.filledQuantity);
 			dto.setInstrumentToken(instrumentToken);
 			dto.setOrderId(order.orderId);
-			dto.setOrderTimestamp(DateFormatUtil.getCurrentISTTime(order.orderTimestamp));
+			dto.setOrderTimestamp(order.orderTimestamp);
 			dto.setOrderType(order.orderType);
 			dto.setOrderVariety(order.orderVariety);
 			dto.setParentOrderId(order.parentOrderId);

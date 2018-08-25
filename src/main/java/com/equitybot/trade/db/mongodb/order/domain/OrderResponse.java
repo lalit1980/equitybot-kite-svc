@@ -1,5 +1,7 @@
 package com.equitybot.trade.db.mongodb.order.domain;
 
+import java.util.Date;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -25,8 +27,8 @@ public class OrderResponse{
 	    private String orderId;
 	    private String symbol;
 	    private String pendingQuantity;
-	    private String orderTimestamp;
-	    private String exchangeTimestamp;
+	    private Date orderTimestamp;
+	    private Date exchangeTimestamp;
 	    private String averagePrice;
 	    private String transactionType;
 	    private String filledQuantity;
@@ -141,16 +143,16 @@ public class OrderResponse{
 		public void setPendingQuantity(String pendingQuantity) {
 			this.pendingQuantity = pendingQuantity;
 		}
-		public String getOrderTimestamp() {
+		public Date getOrderTimestamp() {
 			return orderTimestamp;
 		}
-		public void setOrderTimestamp(String orderTimestamp) {
+		public void setOrderTimestamp(Date orderTimestamp) {
 			this.orderTimestamp = orderTimestamp;
 		}
-		public String getExchangeTimestamp() {
+		public Date getExchangeTimestamp() {
 			return exchangeTimestamp;
 		}
-		public void setExchangeTimestamp(String exchangeTimestamp) {
+		public void setExchangeTimestamp(Date exchangeTimestamp) {
 			this.exchangeTimestamp = exchangeTimestamp;
 		}
 		public String getAveragePrice() {

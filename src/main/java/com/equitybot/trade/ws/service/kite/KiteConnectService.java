@@ -22,11 +22,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import com.equitybot.trade.converter.CustomTickBarList;
-import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
-import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
 import com.equitybot.trade.db.mongodb.order.domain.OrderRequestDTO;
 import com.equitybot.trade.db.mongodb.order.domain.OrderResponse;
-import com.equitybot.trade.db.mongodb.order.domain.TrailStopLossResponse;
 import com.equitybot.trade.db.mongodb.order.repository.OrderResponseRepository;
 import com.equitybot.trade.db.mongodb.order.repository.TrailStopLossRepository;
 import com.equitybot.trade.db.mongodb.property.domain.KiteProperty;
@@ -92,6 +89,8 @@ public class KiteConnectService {
 	private IgniteCache<Long, Boolean> startTrade;
 	
 	private boolean backTestFlag;
+	
+	private boolean calculateStopLossFlag;
 
 	@Autowired
 	private CustomTickBarList customTickBarList;
@@ -238,7 +237,7 @@ public class KiteConnectService {
 				Instrument instrument = cacheInstrument.get(tradeRequest.getInstrumentToken());
 				quantity=this.cacheQuantity.get(instrument.getTradingsymbol());
 				if(quantity==0) {
-					quantity=35;
+					quantity=4;
 				}
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
@@ -305,7 +304,7 @@ public class KiteConnectService {
 			
 			stopLossDistance=this.cacheStopLoss.get(cacheInstrument.get(instrumentToken).getTradingsymbol());
 			if(stopLossDistance<=0) {
-				stopLossDistance=20;
+				stopLossDistance=11;
 			}
 			
 			//double stopLossDistance=((purcahsePrice*stopLoss)/100);
@@ -914,7 +913,7 @@ public class KiteConnectService {
 						cacheLastTradedPrice.put(tick.getInstrumentToken(),tick.getLastTradedPrice());
 						//repository.save(tickz);
 						//LOGGER.info(tickz.toString());
-						if(cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken())) {
+						if(cacheTradeOrder!=null && cacheTradeOrder.containsKey(tick.getInstrumentToken()) && calculateStopLossFlag) {
 							calculateTrailStoLoss(tick.getInstrumentToken());
 						}
 					}
@@ -1098,11 +1097,11 @@ public class KiteConnectService {
 		response.setDisclosedQuantity(order2.disclosedQuantity);
 		response.setExchange(order2.exchange);
 		response.setExchangeOrderId(order2.exchangeOrderId);
-		response.setExchangeTimestamp(DateFormatUtil.getCurrentISTTime(new Date()));
+		response.setExchangeTimestamp(order2.exchangeTimestamp);
 		response.setFilledQuantity(order2.filledQuantity);
 		response.setInstrumentToken(tradeRequest.getInstrumentToken());
 		response.setOrderId(order2.orderId);
-		response.setOrderTimestamp(DateFormatUtil.getCurrentISTTime(new Date()));
+		response.setOrderTimestamp(order2.orderTimestamp);
 		response.setOrderType(order2.orderType);
 		response.setOrderVariety(order2.orderVariety);
 		response.setParentOrderId(order2.parentOrderId);
@@ -1137,5 +1136,13 @@ public class KiteConnectService {
 
 	public void setTrailStopLossFeature(String trailStopLossFeature) {
 		this.trailStopLossFeature = trailStopLossFeature;
+	}
+
+	public boolean isCalculateStopLossFlag() {
+		return calculateStopLossFlag;
+	}
+
+	public void setCalculateStopLossFlag(boolean calculateStopLossFlag) {
+		this.calculateStopLossFlag = calculateStopLossFlag;
 	}
 }
