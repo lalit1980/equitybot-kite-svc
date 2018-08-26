@@ -4,17 +4,16 @@
   <artifactId>equitybot-kite-svc</artifactId>
   <version>1.0</version>
   
-
 	<properties>
+
 		<java.version>1.8</java.version>
 	</properties>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.0.3.RELEASE</version>
+		<version>2.0.4.RELEASE</version>
 	</parent>
-
 
 	<dependencies>
 		<dependency>
@@ -89,6 +88,7 @@
 			<artifactId>spring-kafka-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
 		<!-- https://mvnrepository.com/artifact/org.springframework.integration/spring-integration-kafka -->
 		<dependency>
 			<groupId>org.springframework.integration</groupId>
@@ -104,26 +104,105 @@
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
 		</dependency>
-		 <dependency>
-            <groupId>org.ta4j</groupId>
-            <artifactId>ta4j-core</artifactId>
-            <version>0.11</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.ignite/ignite-kubernetes -->
+		<dependency>
+			<groupId>org.ta4j</groupId>
+			<artifactId>ta4j-core</artifactId>
+			<version>0.11</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.cache</groupId>
+			<artifactId>cache-api</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.apache.ignite</groupId>
-			<artifactId>ignite-kubernetes</artifactId>
-			<version>2.5.0</version>
+			<artifactId>ignite-core</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-spring</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-log4j</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-indexing</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-spring-data</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-ml</artifactId>
+			<version>2.6.0</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/org.apache.ignite/ignite-zookeeper -->
 		<dependency>
 			<groupId>org.apache.ignite</groupId>
 			<artifactId>ignite-zookeeper</artifactId>
-			<version>2.5.0</version>
+			<version>2.6.0</version>
 		</dependency>
-	</dependencies>
 
+
+
+		<dependency>
+			<groupId>commons-cli</groupId>
+			<artifactId>commons-cli</artifactId>
+			<version>1.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.code.simple-spring-memcached</groupId>
+			<artifactId>spymemcached</artifactId>
+			<version>2.8.4</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.h2database/h2 -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.195</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>3.17</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>3.17</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.ignite/ignite-kubernetes -->
+		<dependency>
+			<groupId>org.apache.ignite</groupId>
+			<artifactId>ignite-kubernetes</artifactId>
+			<version>2.6.0</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.ignite/ignite-zookeeper -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+	</dependencies>
 	<build>
 		<plugins>
 			<plugin>
@@ -132,5 +211,4 @@
 			</plugin>
 		</plugins>
 	</build>
-  
 </project>

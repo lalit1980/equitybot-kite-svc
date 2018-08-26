@@ -21,8 +21,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
+import com.equitybot.trade.db.mongodb.instrument.repository.InstrumentRepository;
 import com.equitybot.trade.db.mongodb.property.repository.PropertyRepository;
 import com.equitybot.trade.ignite.configs.IgniteConfig;
+import com.equitybot.trade.util.DateFormatUtil;
 import com.equitybot.trade.ws.service.kite.KiteConnectService;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
@@ -30,8 +33,6 @@ import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Position;
 import com.zerodhatech.models.Tick;
-
-import ch.qos.logback.classic.Logger;
 
 @RestController
 @RequestMapping("/api")
@@ -42,21 +43,21 @@ public class InitiateKiteController {
 
 	@Autowired
 	private PropertyRepository propertyRepository;
+	
+	@Autowired
+	private InstrumentRepository instrumentRepository;
 
 	@Autowired
 	IgniteConfig igniteConfig;
 
 	private IgniteCache<Long, Double> cacheMaxTrailStopLoss;
 	private IgniteCache<Long, Boolean> cacheTrailStopLossSignal;
-	private IgniteCache<Long, Instrument> cacheInstrument;
-	private IgniteCache<Long, Double> stopLoss;
-	private IgniteCache<Long, Integer> quantity;
-
-	private IgniteCache<String, Double> cacheStopLossValue;
-	private IgniteCache<String, Integer> cacheQuantity;
+	private IgniteCache<Long, String> cacheInstrumentTradingSymbol;
+	private IgniteCache<Long, Double> cacheStopLossValue;
+	private IgniteCache<Long, Integer> cacheQuantity;
 
 	private IgniteCache<Long, Boolean> startTrade;
-	private IgniteCache<String, Double> cacheTargetPrice;
+	private IgniteCache<Long, Double> cacheTargetPrice;
 	private IgniteCache<String, KiteConnect> cacheUserSession;
 	private IgniteCache<Long, String> cacheTradeOrder;
 
@@ -69,20 +70,20 @@ public class InitiateKiteController {
 				"CacheTrailStopLossSignal");
 		this.cacheTrailStopLossSignal = igniteConfig.getInstance().getOrCreateCache(ccfgcacheTrailStopLossSignal);
 
-		CacheConfiguration<Long, Instrument> ccfgcacheInstrument = new CacheConfiguration<Long, Instrument>(
-				"CacheInstrument");
-		this.cacheInstrument = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
+		CacheConfiguration<Long, String> ccfgcacheInstrument = new CacheConfiguration<Long, String>(
+				"CacheInstrumentTradingSymbol");
+		this.cacheInstrumentTradingSymbol = igniteConfig.getInstance().getOrCreateCache(ccfgcacheInstrument);
 
-		CacheConfiguration<String, Double> ccfgcStopLoss = new CacheConfiguration<String, Double>("CacheStopLoss");
+		CacheConfiguration<Long, Double> ccfgcStopLoss = new CacheConfiguration<Long, Double>("CacheStopLoss");
 		this.cacheStopLossValue = igniteConfig.getInstance().getOrCreateCache(ccfgcStopLoss);
 
-		CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
+		CacheConfiguration<Long, Integer> ccfgcQuantity = new CacheConfiguration<Long, Integer>("CacheQuantity");
 		this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
 
 		CacheConfiguration<Long, Boolean> ccfgcStartTrade = new CacheConfiguration<Long, Boolean>("CacheStartTrade");
 		this.startTrade = igniteConfig.getInstance().getOrCreateCache(ccfgcStartTrade);
 
-		CacheConfiguration<String, Double> ccfgcTargetPrice = new CacheConfiguration<String, Double>(
+		CacheConfiguration<Long, Double> ccfgcTargetPrice = new CacheConfiguration<Long, Double>(
 				"CacheTargetPrice");
 		this.cacheTargetPrice = igniteConfig.getInstance().getOrCreateCache(ccfgcTargetPrice);
 
@@ -114,12 +115,18 @@ public class InitiateKiteController {
 		try {
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
 			this.cacheUserSession.put(userId, kiteconnect);
-			List<Instrument> list = tradePortZerodhaConnect.getAllInstruments(kiteconnect);
+			
+			List<InstrumentModel> list = null;
+			instrumentRepository.deleteAll();
+			list= DateFormatUtil.convertInstrumentModel(
+					tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken).getInstruments());
+			instrumentRepository.addAllInstruments(list);
+			
 			if (list != null && list.size() > 0) {
-				for (Instrument instrument : list) {
-					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
-					cacheStopLossValue.put(instrument.getTradingsymbol(), 5.00);
-					cacheQuantity.put(instrument.getTradingsymbol(), 2);
+				for (InstrumentModel instrument : list) {
+					this.cacheInstrumentTradingSymbol.put(instrument.getInstrumentToken(), instrument.getTradingSymbol());
+					cacheStopLossValue.put(instrument.getInstrumentToken(), 5.00);
+					cacheQuantity.put(instrument.getInstrumentToken(), 2);
 				}
 			}
 			if (instrumentTokens != null && instrumentTokens.size() > 0) {
@@ -139,20 +146,26 @@ public class InitiateKiteController {
 
 	}
 
-	@PostMapping("/process/v1.0/{userId}/{requestToken}/{calculateStoppLossFlag}")
-	public void startLiveTrade(@PathVariable("userId") String userId, 
-							   @PathVariable("requestToken") String requestToken, 
-							   @PathVariable("calculateStoppLossFlag") Boolean calculateStoppLossFlag,
+	@PostMapping("/process/v1.0/{userId}/{requestToken}/{calculateStopLossFlag}")
+	public void startLiveTrade(@PathVariable("userId") String userId, @PathVariable("requestToken") String requestToken,@PathVariable("calculateStopLossFlag") Boolean trailStopLossFlag,
 			@RequestBody ArrayList<Long> instrumentTokens) throws ParseException {
-
+		tradePortZerodhaConnect.setCalculateStopLossFlag(trailStopLossFlag);
 		try {
 			tradePortZerodhaConnect.setBackTestFlag(true);
+			
 			KiteConnect kiteconnect = tradePortZerodhaConnect.getKiteConnectSession(userId, requestToken);
 			this.cacheUserSession.put(userId, kiteconnect);
-			List<Instrument> list = tradePortZerodhaConnect.getAllInstruments(kiteconnect);
+			
+			List<InstrumentModel> list = null;
+			instrumentRepository.deleteAll();
+			list= DateFormatUtil.convertInstrumentModel(
+					tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken).getInstruments());
+			instrumentRepository.addAllInstruments(list);
+			
+			
 			if (list != null && list.size() > 0) {
-				for (Instrument instrument : list) {
-					this.cacheInstrument.put(instrument.getInstrument_token(), instrument);
+				for (InstrumentModel instrument : list) {
+					this.cacheInstrumentTradingSymbol.put(instrument.getInstrumentToken(), instrument.getTradingSymbol());
 				}
 			}
 
@@ -161,10 +174,9 @@ public class InitiateKiteController {
 					Long long1 = (Long) iterator.next();
 					this.cacheMaxTrailStopLoss.put(long1, 0.0);
 					this.cacheTrailStopLossSignal.put(long1, false);
-					Instrument instrument = this.cacheInstrument.get(long1);
-					cacheStopLossValue.put(instrument.getTradingsymbol(), 5.00);
-					this.cacheTargetPrice.put(instrument.getTradingsymbol(), 5.00);
-					this.cacheQuantity.put(instrument.getTradingsymbol(), 2);
+					cacheStopLossValue.put(long1, 30.00);
+					this.cacheTargetPrice.put(long1, 30.00);
+					this.cacheQuantity.put(long1, 5);
 					startTrade.put(long1, false);
 				}
 			}
@@ -173,7 +185,7 @@ public class InitiateKiteController {
 			Long dayFriction = 86400000L;
 			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
 			Date historicalFromDate = dateFormat
-					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*4))));
+					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*3))));
 			tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate,
 					historicalToDate, "minute", false);
 			
@@ -200,12 +212,10 @@ public class InitiateKiteController {
 			if (instrumentTokens != null && instrumentTokens.size() > 0) {
 				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
 					Long long1 = (Long) iterator.next();
-					System.out.println("Trade Started for instruments: "+this.cacheInstrument.get(long1).getTradingsymbol());
 					startTrade.put(long1, true);
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(false);
-			tradePortZerodhaConnect.setCalculateStopLossFlag(calculateStoppLossFlag);
 			tradePortZerodhaConnect.tickerUsage(kiteconnect, instrumentTokens);
 		} catch (IOException | WebSocketException | KiteException e) {
 			e.printStackTrace();

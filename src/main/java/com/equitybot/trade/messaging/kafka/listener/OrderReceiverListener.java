@@ -51,11 +51,13 @@ public class OrderReceiverListener {
 	}
 
 	public void placeTradeOrder(OrderRequestDTO tradeBO) {
-		logger.info("Received Order for: "+tradeBO.toString());
-		if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {
+		//logger.info("Received Order for: "+tradeBO.toString());
+		if (tradeBO.getTransactionType()!=null && tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_BUY)) {
 			buyOrderService.buyOrder(tradeBO);
-		} else if (tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_SELL)) {
+		} else if (tradeBO.getTransactionType()!=null && tradeBO.getTransactionType().equalsIgnoreCase(Constants.TRANSACTION_TYPE_SELL)) {
 			sellOrderService.sellOrder(tradeBO);
+		}else {
+			logger.info("Received Order for: "+tradeBO.toString() +" Transaction Type null ");
 		}
 	}
 

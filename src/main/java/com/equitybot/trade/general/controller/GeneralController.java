@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.equitybot.trade.ignite.configs.IgniteConfig;
+import com.equitybot.trade.ws.service.kite.KiteConnectService;
 import com.zerodhatech.kiteconnect.utils.Constants;
 
 @RestController
@@ -27,16 +28,20 @@ public class GeneralController {
 	
 	@Autowired
 	IgniteConfig igniteConfig;
-	private IgniteCache<String, Double> cacheStopLossValue;
-	private IgniteCache<String, Integer> cacheQuantity;
+	
+	@Autowired
+	private KiteConnectService tradePortZerodhaConnect;
+	
+	private IgniteCache<Long, Double> cacheStopLossValue;
+	private IgniteCache<Long, Integer> cacheQuantity;
 	private IgniteCache<Long, String> cacheTradeOrder;
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	
 	public GeneralController() {
-		CacheConfiguration<String, Double> ccfgcStopLoss = new CacheConfiguration<String, Double>("CacheStopLoss");
+		CacheConfiguration<Long, Double> ccfgcStopLoss = new CacheConfiguration<Long, Double>("CacheStopLoss");
 		this.cacheStopLossValue = igniteConfig.getInstance().getOrCreateCache(ccfgcStopLoss);
 		
-		CacheConfiguration<String, Integer> ccfgcQuantity = new CacheConfiguration<String, Integer>("CacheQuantity");
+		CacheConfiguration<Long, Integer> ccfgcQuantity = new CacheConfiguration<Long, Integer>("CacheQuantity");
 		this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
 		
 		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
@@ -45,21 +50,21 @@ public class GeneralController {
 	}
 
 	@PostMapping({ "/general/v1.0/{instrumentToken}/{quantity}" })
-	public String addQuantity(@PathVariable("instrumentToken") String instrumentToken,
+	public String addQuantity(@PathVariable("instrumentToken") Long instrumentToken,
 			@PathVariable("quantity") int quantity) {
 		cacheQuantity.put(instrumentToken, quantity);
 		return "Instrument Quantity: "+cacheQuantity.get(instrumentToken);
 	}
 	
 	@PostMapping({ "/general/v1.0/stopLoss/{instrumentToken}/{stopLoss}" })
-	public String addStopLoss(@PathVariable("instrumentToken") String instrumentToken,
+	public String addStopLoss(@PathVariable("instrumentToken") Long instrumentToken,
 			@PathVariable("stopLoss") double stopLoss) {
 		cacheStopLossValue.put(instrumentToken, stopLoss);
 		return "Instrument Stop Loss: "+cacheStopLossValue.get(instrumentToken);
 	}
 
 	@PutMapping("/general/v1.0/{instrumentToken}/{quantity}/{stopLoss}")
-	public void update(@PathVariable("instrumentToken") String instrumentToken,
+	public void update(@PathVariable("instrumentToken") Long instrumentToken,
 			@PathVariable("quantity") int quantity,
 			@PathVariable("stopLoss") double stopLoss) {
 		cacheQuantity.put(instrumentToken, quantity);
@@ -67,7 +72,7 @@ public class GeneralController {
 	}
 
 	@DeleteMapping({ "/general/v1.0/{instrumentToken}" })
-	public void delete(@PathVariable("instrumentToken") String instrumentToken) {
+	public void delete(@PathVariable("instrumentToken") Long instrumentToken) {
 		if(cacheQuantity.containsKey(instrumentToken)) {
 			cacheQuantity.remove(instrumentToken);
 		}
@@ -109,6 +114,11 @@ public class GeneralController {
 	@GetMapping("/general/v1.0/getOrderInCache/{instrumentToken}")
 	public String findOrderInCache(@PathVariable("instrumentToken") Long tradingSymbol) {
 		return this.cacheTradeOrder.get(tradingSymbol);
+	}
+	
+	@PutMapping("/general/v1.0/updateTrailStolossFlag/{calculateStopLossFlag}")
+	public void updateTrailStopLossFlag(@PathVariable("calculateStopLossFlag") Boolean calculateStopLossFlag) {
+		tradePortZerodhaConnect.setCalculateStopLossFlag(calculateStopLossFlag);
 	}
 	
 }

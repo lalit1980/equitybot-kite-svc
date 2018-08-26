@@ -116,9 +116,11 @@ public class InstrumentController {
 		instrumentRepository.deleteAll();
 		list= DateFormatUtil.convertInstrumentModel(
 				tradePortZerodhaConnect.getKiteConnectSession(userId,requestToken).getInstruments());
+		instrumentRepository.addAllInstruments(list);
+		/*
 		for (InstrumentModel instrumentModel : list) {
 			instrumentRepository.save(instrumentModel);
-		}
+		}*/
 		//instrumentRepository.addAllInstruments(list);
 		return list;
 	}

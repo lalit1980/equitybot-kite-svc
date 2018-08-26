@@ -1,29 +1,27 @@
 package com.equitybot.trade.service.cache.ignite;
 
-import com.equitybot.trade.ignite.configs.IgniteConfig;
-import com.zerodhatech.models.Tick;
-
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.CacheRebalanceMode;
+import org.apache.ignite.IgniteCache;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import com.equitybot.trade.ignite.configs.IgniteConfig;
+import com.zerodhatech.models.Tick;
+
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-public class IgniteCache {
+public class IgniteCacheMaster {
 
     @Autowired
     IgniteConfig igniteConfig;
-    private org.apache.ignite.IgniteCache<Long, Tick> maxTrailStopLossTickCache;
-    private org.apache.ignite.IgniteCache<Long, Tick> latestTickCache;
+    private IgniteCache<Long, Tick> maxTrailStopLossTickCache;
+    private IgniteCache<Long, Double> cacheLastTradedPrice;
 
-    public IgniteCache(){
-        CacheConfiguration<Long, Tick> ccfgLatestTickParams = new CacheConfiguration<>("CachedLatestTick");
-        this.latestTickCache = igniteConfig.getInstance().getOrCreateCache(ccfgLatestTickParams);
+    public IgniteCacheMaster(){
+    	CacheConfiguration<Long, Double> ccfg = new CacheConfiguration<Long, Double>("LastTradedPrice");
+		this.cacheLastTradedPrice = igniteConfig.getInstance().getOrCreateCache(ccfg);
 
         CacheConfiguration<Long, Tick> ccfgMaxTrailStopLossTickCacheParams = new CacheConfiguration<>("MaxTrailStopLossTickCache");
         this.maxTrailStopLossTickCache = igniteConfig.getInstance().getOrCreateCache(ccfgMaxTrailStopLossTickCacheParams);
@@ -33,7 +31,9 @@ public class IgniteCache {
         return maxTrailStopLossTickCache;
     }
 
-    public org.apache.ignite.IgniteCache<Long, Tick> getLatestTickCache() {
-        return latestTickCache;
-    }
+	public IgniteCache<Long, Double> getCacheLastTradedPrice() {
+		return cacheLastTradedPrice;
+	}
+
+   
 }
