@@ -24,8 +24,8 @@ public class HistoricalLiveDataService {
     @Autowired
     private HistoricalDataHService historicalDataService;
 
-    @Autowired
-    private LiveDataHSource liveDataHSource;
+   // @Autowired
+    //private LiveDataHSource liveDataHSource;
 
     private List<Long> liveInstruments;
 
@@ -50,7 +50,7 @@ public class HistoricalLiveDataService {
         processHistoricalData(instruments, historicalFromDate, historicalToDate, true);
         adjustTime( historicalToDate, instruments);
         this.liveInstruments = Collections.synchronizedList(instruments);
-        liveDataHSource.subscribe(instruments);
+        serve();
     }
 
 
@@ -76,10 +76,9 @@ public class HistoricalLiveDataService {
         CompletableFuture.allOf(completableFutureArray).join();
     }
 
-    private long getCurrentPerfectMinuteTime(){
+    public static long getCurrentPerfectMinuteTime(){
         Date date = new Date(System.currentTimeMillis());
         int second = date.getSeconds();
         return date.getTime()-(second*1000);
     }
-
 }
