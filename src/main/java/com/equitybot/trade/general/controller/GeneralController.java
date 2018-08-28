@@ -121,4 +121,13 @@ public class GeneralController {
 		tradePortZerodhaConnect.setCalculateStopLossFlag(calculateStopLossFlag);
 	}
 	
+	@PutMapping("/general/v1.0/updateDayTradingAllowed/{dayTradingAllowed}")
+	public void updateDayTradingAllowed(@PathVariable("dayTradingAllowed") Boolean dayTradingAllowed) {
+		tradePortZerodhaConnect.setDayTradingAllowed(dayTradingAllowed);
+	}
+	@PutMapping("/general/v1.0/updateDayTarget/{dayTradingAllowed}")
+	public void updateDayTarget(@PathVariable("dayTargetAmount") Double dayTargetAmount) {
+		tradePortZerodhaConnect.setDayTarget(dayTargetAmount);
+	}
+	
 }

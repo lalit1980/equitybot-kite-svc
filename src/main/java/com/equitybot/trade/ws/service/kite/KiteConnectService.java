@@ -87,10 +87,13 @@ public class KiteConnectService {
 	private IgniteCache<Long, Integer> cacheQuantity;
 	private IgniteCache<Long, String> cacheInstrumentTradingSymbol;
 	private IgniteCache<Long, Boolean> startTrade;
+	private IgniteCache<String, String> userSession;
+	private double dayTarget;
 	
 	private boolean backTestFlag;
 	
 	private boolean calculateStopLossFlag;
+	private boolean dayTradingAllowed;
 
 	@Autowired
 	private CustomTickBarList customTickBarList;
@@ -168,8 +171,13 @@ public class KiteConnectService {
 		 CacheConfiguration<Long, Integer> ccfgcQuantity = new CacheConfiguration<Long, Integer>("CacheQuantity");
 		 this.cacheQuantity = igniteConfig.getInstance().getOrCreateCache(ccfgcQuantity);
 		 
+		 CacheConfiguration<String, String> ccfgUserSession = new CacheConfiguration<String, String>("CacheUserSession");
+		 this.userSession = igniteConfig.getInstance().getOrCreateCache(ccfgUserSession);
+		 
 	     this.backTestFlag=false;
 	     this.calculateStopLossFlag=false;
+	     this.dayTarget=0.0;
+	     this.dayTradingAllowed=false;
 		
 	}
 
@@ -224,6 +232,33 @@ public class KiteConnectService {
 		return orders;
 	}
 	
+public double calculateProfitAndLoss(String userId) {
+	String requestToken=this.userSession.get(userId);
+	Map<String, List<Position>> map=null;
+	try {
+		map = getPositions(userId, requestToken);
+	} catch (IOException | KiteException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+	double totalProfitAndLoss=0;
+	if(map!=null) {
+		for (Map.Entry<String, List<Position>> entry : map.entrySet()) {
+			if(entry.getKey().equalsIgnoreCase("net")) {
+				List<Position> positionList=entry.getValue();
+				if(positionList!=null && positionList.size()>0) {
+					for(int i=0;i<positionList.size();i++) {
+						Position position=positionList.get(i);
+						System.out.println(position.instrumentToken+" Started: "+position.netQuantity+" Total profit loss: "+position.pnl);
+						totalProfitAndLoss=totalProfitAndLoss+position.pnl;
+					}
+				}
+			}
+		}
+	}
+	return totalProfitAndLoss;
+}
+	
 	/** Place order. */
 	public Order placeOrder(OrderRequestDTO tradeRequest) {
 		LOGGER.info("Place Order Service: "+ tradeRequest.getTradingsymbol()+" Order Type: "+ tradeRequest.getTransactionType()+" Price: "+cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+" Tag: "+tradeRequest.getTag());
@@ -237,7 +272,7 @@ public class KiteConnectService {
 				String tradingSymbol = instrument.getTradingSymbol();
 				quantity=this.cacheQuantity.get(tradeRequest.getInstrumentToken());
 				if(quantity==0) {
-					quantity=4;
+					quantity=5;
 				}
 				
 				orderParams.quantity = instrument.getLot_size()* quantity;
@@ -275,6 +310,14 @@ public class KiteConnectService {
 	private void checkOrderStatus(OrderRequestDTO tradeRequest, Order order) throws KiteException, IOException {
 		if(order!=null) {
 			List<Order> orderList = getOrder(tradeRequest.getUserId(), tradeRequest.getRequestToken(), order.orderId);
+			double totalProfitAndLoss=calculateProfitAndLoss(tradeRequest.getUserId());
+			LOGGER.info("Current Total Profit and Loss: "+totalProfitAndLoss);
+			if(this.getDayTarget()<=0) {
+				this.setDayTarget(12000.00);
+			}
+			if(totalProfitAndLoss>15000 || totalProfitAndLoss <=-20000) {
+				this.setDayTradingAllowed(false);
+			}
 			if (orderList != null && orderList.size() > 0) {
 				for (Order order2 : orderList) {
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
@@ -282,9 +325,14 @@ public class KiteConnectService {
 					if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Buy") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
 						orderResponseRepository.save(result);
+						LOGGER.info("Order Price: "+order2.price+" Order Average Price: "+order2.averagePrice);
+						if(order2.averagePrice!=null) {
+							cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), Double.parseDouble(order2.averagePrice));
+						}
 					} else if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
 						orderResponseRepository.save(result);
+						
 					}else {
 						LOGGER.info("No order id matched......");
 					}
@@ -305,7 +353,7 @@ public class KiteConnectService {
 			
 			stopLossDistance=this.cacheStopLoss.get(instrumentToken);
 			if(stopLossDistance<=0) {
-				stopLossDistance=30;
+				stopLossDistance=5;
 			}
 			
 			//double stopLossDistance=((purcahsePrice*stopLoss)/100);
@@ -842,11 +890,13 @@ public class KiteConnectService {
 
 	public KiteConnect getKiteConnectSession(String userId, String requestToken)
 			throws JSONException, IOException, KiteException {
+		
 		KiteConnect kiteConnect = null;
 		KiteProperty kitePropertyList = propertyRepository.findByUserId(userId);
 		if (kitePropertyList != null && requestToken != null) {
 			kitePropertyList.setRequestToken(requestToken);
 			propertyRepository.save(kitePropertyList);
+			this.userSession.put(userId, requestToken);
 		}
 		if (kiteSessionList != null && kiteSessionList.size() > 0) {
 			kiteConnect = kiteSessionList.stream().filter(x -> userId.equals(x.getUserId())).findFirst().orElse(null);
@@ -873,6 +923,7 @@ public class KiteConnectService {
 			kiteConnect.setAccessToken(user.accessToken);
 			kiteConnect.setPublicToken(user.publicToken);
 			kiteSessionList.add(kiteConnect);
+			this.userSession.put(userId, kiteProperty.getRequestToken());
 			propertyRepository.updatePropertyByUserId(kiteProperty.getUserId(), kiteProperty.getRequestToken(),
 					user.accessToken, user.publicToken);
 		}
@@ -915,7 +966,7 @@ public class KiteConnectService {
 								calculateTrailStoLoss(tick.getInstrumentToken());
 							}
 							//repository.save(tickz);
-							Thread.sleep(300);
+							Thread.sleep(100);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -1045,5 +1096,21 @@ public class KiteConnectService {
 
 	public void setCalculateStopLossFlag(boolean calculateStopLossFlag) {
 		this.calculateStopLossFlag = calculateStopLossFlag;
+	}
+
+	public double getDayTarget() {
+		return dayTarget;
+	}
+
+	public void setDayTarget(double dayTarget) {
+		this.dayTarget = dayTarget;
+	}
+
+	public boolean isDayTradingAllowed() {
+		return dayTradingAllowed;
+	}
+
+	public void setDayTradingAllowed(boolean dayTradingAllowed) {
+		this.dayTradingAllowed = dayTradingAllowed;
 	}
 }

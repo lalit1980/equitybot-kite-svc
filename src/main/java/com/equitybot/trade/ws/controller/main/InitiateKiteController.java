@@ -185,9 +185,9 @@ public class InitiateKiteController {
 			Long dayFriction = 86400000L;
 			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
 			Date historicalFromDate = dateFormat
-					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*3))));
+					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*2))));
 			tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate,
-					historicalToDate, "minute", false);
+					historicalToDate, "5minute", false);
 			
 			Map<String, List<Position>> map=tradePortZerodhaConnect.getPositions(userId, requestToken);
 			if(map!=null) {
