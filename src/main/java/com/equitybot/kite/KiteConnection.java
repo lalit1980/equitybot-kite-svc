@@ -1,6 +1,6 @@
 package com.equitybot.kite;
 
-import com.equitybot.kite.dao.property.domain.KiteProperty;
+import com.equitybot.common.config.YAMLConfig;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.SessionExpiryHook;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
@@ -21,8 +21,7 @@ public class KiteConnection {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Autowired
-    private com.equitybot.kite.dao.property.KitePropertyDAO kitePropertyDAO;
-
+    private YAMLConfig yamlConfig;
 
     private KiteConnect kiteConnectSession;
     private String userId;
@@ -40,11 +39,10 @@ public class KiteConnection {
     private KiteConnect connect(final String user, String requestToken)
             throws KiteException, IOException {
         this.userId = user;
-        KiteProperty kiteProperty = this.kitePropertyDAO.findByUserId(userId);
-        if (kiteProperty != null) {
-            kiteProperty.setRequestToken(requestToken);
-            this.kiteConnectSession = new KiteConnect(kiteProperty.getApiKey());
-            this.kiteConnectSession.setUserId(kiteProperty.getUserId());
+        String[] userValue = this.yamlConfig.getUsersValue().get(userId);
+        if (userValue != null) {
+            this.kiteConnectSession = new KiteConnect(userValue[1]);
+            this.kiteConnectSession.setUserId(userValue[0]);
             this.kiteConnectSession.setEnableLogging(true);
             this.kiteConnectSession.setSessionExpiryHook(new SessionExpiryHook() {
                 @Override
@@ -54,13 +52,12 @@ public class KiteConnection {
                     userId = null;
                 }
             });
-            logger.info(" ----- Request Token : {} # Api Secret : {}", kiteProperty.getRequestToken(), kiteProperty.getApiSecret());
-            User userModel = kiteConnectSession.generateSession(kiteProperty.getRequestToken(), kiteProperty.getApiSecret());
+            logger.info(" ----- Request Token : {} # Api Secret : {}", requestToken, userValue[2]);
+            User userModel = kiteConnectSession.generateSession(requestToken, userValue[2]);
             kiteConnectSession.setAccessToken(userModel.accessToken);
             kiteConnectSession.setPublicToken(userModel.publicToken);
-            kitePropertyDAO.updatePropertyByUserId(userId, kiteProperty.getRequestToken(), userModel.accessToken, userModel.publicToken);
         } else {
-            logger.error(" --- kiteProperty : {} is null", kiteProperty);
+            logger.error(" --- user is not configure : {} is null", userValue);
             throw new RuntimeException(" --- kiteProperty is null");
         }
         return kiteConnectSession;

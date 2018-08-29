@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Service
@@ -17,8 +19,10 @@ public class HistoricalDataHSource {
     private KiteConnection kiteConnection;
 
     public HistoricalData getHistoricalData(Long instrumentToken, Date fromDate, Date toDate, String interval, boolean continuous)
-            throws KiteException, IOException {
+            throws KiteException, IOException, ParseException {
+
 
         return this.kiteConnection.session().getHistoricalData(fromDate, toDate, String.valueOf(instrumentToken), interval, continuous);
+
     }
 }

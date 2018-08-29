@@ -1,11 +1,7 @@
 package com.equitybot.common.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "Tick")
 public class DepthModel {
-    @Id
     private String id;
     private int quantity;
     private double price;

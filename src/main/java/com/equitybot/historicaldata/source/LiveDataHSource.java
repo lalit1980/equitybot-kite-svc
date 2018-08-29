@@ -52,7 +52,7 @@ public final class LiveDataHSource implements OnConnect, OnDisconnect, OnOrderUp
     @Override
     public void onTicks(ArrayList<Tick> ticks) {
         if (ticks != null && !ticks.isEmpty() && ticks.get(0).getMode() != null) {
-                historicalLiveDataService.serve();
+               // historicalLiveDataService.serve();
         }
     }
 

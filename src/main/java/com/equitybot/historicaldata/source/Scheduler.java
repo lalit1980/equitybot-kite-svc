@@ -2,9 +2,9 @@ package com.equitybot.historicaldata.source;
 
 import com.equitybot.historicaldata.service.HistoricalLiveDataService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.util.Date;
-
+@Service
 public class Scheduler {
 
 
@@ -13,13 +13,19 @@ public class Scheduler {
     @Autowired
     private HistoricalLiveDataService historicalLiveDataService;
 
-    private Date lastRecordTime;
+   private boolean flag=true;
 
 
     public void scheduler(){
-        final long time = this.historicalLiveDataService.getCurrentPerfectMinuteTime();
-        if( time - lastRecordTime.getTime() > 60000){
-            historicalLiveDataService.serve();
+        while(flag) {
+                historicalLiveDataService.serve();
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            }
+
         }
-    }
+
 }

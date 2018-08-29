@@ -30,7 +30,7 @@ public class HLOCBarHService {
         cache.putOnLatestTickCache(tickDTO.getInstrumentToken(), tickDTO);
         List<CompletableFuture<BarDTO>> completableFutures = new ArrayList<>();
         for (int barSize : yamlConfig.getBarsizesValue()) {
-            completableFutures.add(hlocBarGenerator.generateAsync(barSize * 60, tickDTO));
+            completableFutures.add(hlocBarGenerator.generateAsync(barSize, tickDTO));
         }
         CompletableFuture<BarDTO>[] completableFutureArray = completableFutures.toArray(new CompletableFuture[completableFutures.size()]);
         CompletableFuture.allOf(completableFutureArray).join();

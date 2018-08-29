@@ -5,22 +5,18 @@
 
 profiles: dev
 
-barsizesminute:
+barsizesminutes:
     - 5
     - 10
     - 15
 
-
 multiplierPeriods:
     - 3,7
     - 2,10
-  
-data:
-  mongodb:
-    host: localhost
-    port: 27017
-    database: hc4
-      
+
+users:
+    - XS2241,j69qu3zl3k8brb2k,qbkog5dnnl92oq8m7yk1lbbljfr5ris2
+
 server:
   address: 127.0.0.1
   port: 9010

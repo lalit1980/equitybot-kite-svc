@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +22,7 @@ public class HistoricalController {
     HistoricalLiveDataService historicalLiveDataService;
 
     @PostMapping("/tiger")
-    public void tiger(@RequestBody List<Long> instrumentTokens) throws KiteException {
+    public void tiger(@RequestBody List<Long> instrumentTokens) throws KiteException, ParseException {
         logger.info(" -- tiger");
         historicalLiveDataService.init(new ArrayList<>(instrumentTokens));
     }

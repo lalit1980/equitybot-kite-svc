@@ -22,7 +22,7 @@ public class LiveDataService {
     @Async("dataProviderTaskPool")
     public CompletableFuture<TickDTO> serve(Tick tick, boolean isLive) {
         TickDTO tickDTO = DataMapper.mapInTick(tick);
-        tickDTO.setLive(isLive);
+        tickDTO.setDummyData(isLive);
         logger.info(" Tick Received : {}", tickDTO);
         dataProviderService.serve(tickDTO);
         return CompletableFuture.completedFuture(tickDTO);

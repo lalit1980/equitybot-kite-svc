@@ -3,9 +3,11 @@ package com.equitybot.historicaldata.service;
 import com.equitybot.common.model.TickDTO;
 import com.equitybot.historicaldata.source.HistoricalDataHSource;
 import com.equitybot.historicaldata.source.LiveDataHSource;
+import com.equitybot.historicaldata.source.Scheduler;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +15,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+@Service
 public class HistoricalLiveDataService {
 
     @Value("${historicaldata.day}")
@@ -23,6 +26,9 @@ public class HistoricalLiveDataService {
 
     @Autowired
     private HistoricalDataHService historicalDataService;
+
+    @Autowired
+    private Scheduler scheduler;
 
    // @Autowired
     //private LiveDataHSource liveDataHSource;
@@ -36,7 +42,7 @@ public class HistoricalLiveDataService {
 
     public void serve(){
         final long time = getCurrentPerfectMinuteTime();
-        if( time - lastRecordTime.getTime() > 60000){
+        if( time - lastRecordTime.getTime() > 6000){
             processHistoricalData( liveInstruments, lastRecordTime , new Date (time) , true);
             lastRecordTime = new Date(time);
         }
@@ -50,15 +56,15 @@ public class HistoricalLiveDataService {
         processHistoricalData(instruments, historicalFromDate, historicalToDate, true);
         adjustTime( historicalToDate, instruments);
         this.liveInstruments = Collections.synchronizedList(instruments);
-        serve();
+        scheduler.scheduler();
     }
 
 
     private void adjustTime(Date historicalToDate, List<Long> instruments){
-        long time = getCurrentPerfectMinuteTime();
-        if(time-historicalToDate.getTime() != 0){
-            processHistoricalData(instruments, historicalToDate, new Date(time),true );
-            adjustTime(new Date(time),instruments);
+        Date time = new Date(getCurrentPerfectMinuteTime());
+        if(time.getTime()-historicalToDate.getTime() != 0){
+            processHistoricalData(instruments, historicalToDate, time,true );
+            adjustTime(time,instruments);
         }else{
             this.lastRecordTime = new Date(getCurrentPerfectMinuteTime());
         }
@@ -69,7 +75,7 @@ public class HistoricalLiveDataService {
         List<CompletableFuture<TickDTO>> completableFutures = new ArrayList<>();
         for (Long instrument : instruments) {
             completableFutures.add(historicalDataService.serve(instrument, historicalFromDate, historicalToDate,
-                    1 + "minute", true,dummyData));
+                     "minute", false,dummyData));
         }
         CompletableFuture<TickDTO>[] completableFutureArray = completableFutures
                 .toArray(new CompletableFuture[completableFutures.size()]);
@@ -79,6 +85,8 @@ public class HistoricalLiveDataService {
     public static long getCurrentPerfectMinuteTime(){
         Date date = new Date(System.currentTimeMillis());
         int second = date.getSeconds();
-        return date.getTime()-(second*1000);
+        int mlSecond = (int)date.getTime()%1000;
+
+        return date.getTime()-(second*1000)-mlSecond;
     }
 }
