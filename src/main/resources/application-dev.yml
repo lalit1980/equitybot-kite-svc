@@ -6,9 +6,9 @@
 profiles: dev
 
 barsizesminutes:
+    - 1
     - 5
     - 10
-    - 15
 
 multiplierPeriods:
     - 3,7
@@ -19,10 +19,10 @@ users:
 
 server:
   address: 127.0.0.1
-  port: 9010
+  port: 9012
 
 report:
-  outputFolder: C:\data\kite\out\
+  outputFolder: /Users/lalitsingh/Documents/GitHub/amit-workspace/csvOut/
 
 historicaldata:
-  day: 1
+  day: 10

@@ -42,7 +42,7 @@ public class HistoricalLiveDataService {
 
     public void serve(){
         final long time = getCurrentPerfectMinuteTime();
-        if( time - lastRecordTime.getTime() > 6000){
+        if( time - lastRecordTime.getTime() >= 60000){
             processHistoricalData( liveInstruments, lastRecordTime , new Date (time) , true);
             lastRecordTime = new Date(time);
         }
