@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.ta4j.core.Decimal;
 
 import com.equitybot.trade.converter.CustomTickBarList;
 import com.equitybot.trade.db.mongodb.instrument.domain.InstrumentModel;
@@ -88,6 +89,7 @@ public class KiteConnectService {
 	private IgniteCache<Long, String> cacheInstrumentTradingSymbol;
 	private IgniteCache<Long, Boolean> startTrade;
 	private IgniteCache<String, String> userSession;
+	private IgniteCache<String, Double> cacheTotalProfitAndLoss;
 	private double dayTarget;
 	
 	private boolean backTestFlag;
@@ -174,6 +176,11 @@ public class KiteConnectService {
 		 CacheConfiguration<String, String> ccfgUserSession = new CacheConfiguration<String, String>("CacheUserSession");
 		 this.userSession = igniteConfig.getInstance().getOrCreateCache(ccfgUserSession);
 		 
+		 CacheConfiguration<String, Double> ccfgTotalProfitAndLoss = new CacheConfiguration<String, Double>("CacheTotalProfitAndLoss");
+		 this.cacheTotalProfitAndLoss = igniteConfig.getInstance().getOrCreateCache(ccfgTotalProfitAndLoss);
+		 
+		 
+		 
 	     this.backTestFlag=false;
 	     this.calculateStopLossFlag=false;
 	     this.dayTarget=0.0;
@@ -232,49 +239,60 @@ public class KiteConnectService {
 		return orders;
 	}
 	
-public double calculateProfitAndLoss(String userId) {
-	String requestToken=this.userSession.get(userId);
-	Map<String, List<Position>> map=null;
-	try {
-		map = getPositions(userId, requestToken);
-	} catch (IOException | KiteException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	}
+public double calculateProfitAndLoss(String userId,String requestToken) {
+	LOGGER.info("Calculate Total Profit and Loss User ID and Request Token: "+userId+"  "+requestToken);
 	double totalProfitAndLoss=0;
-	if(map!=null) {
-		for (Map.Entry<String, List<Position>> entry : map.entrySet()) {
-			if(entry.getKey().equalsIgnoreCase("net")) {
-				List<Position> positionList=entry.getValue();
-				if(positionList!=null && positionList.size()>0) {
-					for(int i=0;i<positionList.size();i++) {
-						Position position=positionList.get(i);
-						System.out.println(position.instrumentToken+" Started: "+position.netQuantity+" Total profit loss: "+position.pnl);
-						totalProfitAndLoss=totalProfitAndLoss+position.pnl;
+		Map<String, List<Position>> map=null;
+		try {
+			map = getPositions(userId, requestToken);
+		} catch (IOException | KiteException e) {
+			e.printStackTrace();
+		}
+		
+		if(map!=null) {
+			for (Map.Entry<String, List<Position>> entry : map.entrySet()) {
+				if(entry.getKey().equalsIgnoreCase("net")) {
+					List<Position> positionList=entry.getValue();
+					if(positionList!=null && positionList.size()>0) {
+						for(int i=0;i<positionList.size();i++) {
+							Position position=positionList.get(i);
+							totalProfitAndLoss=totalProfitAndLoss+position.pnl;
+							if(position.netQuantity>0) {
+								if(Decimal.valueOf(totalProfitAndLoss).isGreaterThan(15000) || Decimal.valueOf(totalProfitAndLoss).isLessThan(1500)) {
+									this.setDayTradingAllowed(false);
+									LOGGER.info("Sending Instrument Token: "+position.instrumentToken+" to squrare off as target meet "+totalProfitAndLoss+" Trading Allowed flag: "+isDayTradingAllowed());
+									squareOff(Long.parseLong(position.instrumentToken),userId);
+									}
+									
+								}else {
+									this.setDayTradingAllowed(true);
+								}
+							}
+						}
 					}
 				}
 			}
-		}
-	}
 	return totalProfitAndLoss;
 }
 	
 	/** Place order. */
 	public Order placeOrder(OrderRequestDTO tradeRequest) {
 		LOGGER.info("Place Order Service: "+ tradeRequest.getTradingsymbol()+" Order Type: "+ tradeRequest.getTransactionType()+" Price: "+cacheLastTradedPrice.get(tradeRequest.getInstrumentToken())+" Tag: "+tradeRequest.getTag());
+			
 			KiteConnect kiteConnect;
 			int quantity;
 			InstrumentModel instrument=instrumentRepository.findByInstrumentToken(String.valueOf(tradeRequest.getInstrumentToken()));
 			try {
 				LOGGER.info("Logged in User ID: " + tradeRequest.getUserId());
 				kiteConnect = getKiteConnectSession(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+				String requestToken=this.userSession.get(tradeRequest.getUserId());
+				calculateProfitAndLoss(tradeRequest.getUserId(),requestToken);
 				OrderParams orderParams = new OrderParams();
 				String tradingSymbol = instrument.getTradingSymbol();
 				quantity=this.cacheQuantity.get(tradeRequest.getInstrumentToken());
 				if(quantity==0) {
 					quantity=5;
 				}
-				
 				orderParams.quantity = instrument.getLot_size()* quantity;
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 				orderParams.tradingsymbol = tradingSymbol;
@@ -284,16 +302,29 @@ public double calculateProfitAndLoss(String userId) {
 				orderParams.validity = Constants.VALIDITY_DAY;
 				orderParams.tag = tradeRequest.getTag(); // tag is optional and it cannot be more than 8 characters
 				Order order=null;
-				if(tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && (!cacheTradeOrder.containsKey(tradeRequest.getInstrumentToken()))) {
-					cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(tradeRequest.getInstrumentToken()));
-					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-					cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
-					checkOrderStatus(tradeRequest,order);
+				Map<String, Margin> marginsMap=getMargins(tradeRequest.getUserId(), tradeRequest.getRequestToken());
+				if(marginsMap!=null && marginsMap.size()>0) {
+					for (Map.Entry<String, Margin> entry : marginsMap.entrySet()) {
+						if(entry.getKey().equalsIgnoreCase("equity")) {
+							Margin margin=entry.getValue();
+							Double availableFundToTrade=Double.parseDouble(margin.net);
+							int stockCount=instrument.getLot_size()* quantity;
+							double lastTradedPrice=cacheLastTradedPrice.get(tradeRequest.getInstrumentToken());
+							double overAllShareCost=stockCount*lastTradedPrice;
+							LOGGER.info(" Stock Count: "+stockCount+ " Current Stock Price: "+lastTradedPrice+ " Over All ShareCost: "+overAllShareCost+" Margin net availble: "+margin.net );
+							if(availableFundToTrade>overAllShareCost) {
+								if(isDayTradingAllowed() && tradeRequest.getTransactionType().equalsIgnoreCase("Buy") && (!cacheTradeOrder.containsKey(tradeRequest.getInstrumentToken()))) {
+									cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), cacheLastTradedPrice.get(tradeRequest.getInstrumentToken()));
+									order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+									checkOrderStatus(tradeRequest,order);
+								}
+							}
+						}
+					}
 				}
 				if(tradeRequest.getTransactionType().toUpperCase().equalsIgnoreCase("Sell") && cacheTradeOrder.containsKey(tradeRequest.getInstrumentToken())) {
 					LOGGER.info("Placing sell order... "+tradeRequest.getInstrumentToken());
 					order = kiteConnect.placeOrder(orderParams, Constants.VARIETY_REGULAR);
-					cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
 					checkOrderStatus(tradeRequest,order);
 				}
 				
@@ -307,17 +338,21 @@ public double calculateProfitAndLoss(String userId) {
 		return null;
 
 	}
+	public void squareOff(long instrumentToken, String userId) {
+		OrderRequestDTO tradeRequest=new OrderRequestDTO();
+		String tradingSymbol = cacheInstrumentTradingSymbol.get(instrumentToken);
+    	tradeRequest.setUserId(userId);
+    	tradeRequest.setInstrumentToken(instrumentToken);
+    	tradeRequest.setTransactionType("Sell");
+    	tradeRequest.setTradingsymbol(tradingSymbol);
+    	tradeRequest.setTag("TPL");
+    	this.cacheMaxTrailStopLoss.put(instrumentToken, 0.0);
+    	LOGGER.info("Sending square off for Symbol: "+tradingSymbol+" Using Total Profit Loss Trigger..."+tradeRequest.toString());
+    	placeOrder(tradeRequest);
+	}
 	private void checkOrderStatus(OrderRequestDTO tradeRequest, Order order) throws KiteException, IOException {
 		if(order!=null) {
 			List<Order> orderList = getOrder(tradeRequest.getUserId(), tradeRequest.getRequestToken(), order.orderId);
-			double totalProfitAndLoss=calculateProfitAndLoss(tradeRequest.getUserId());
-			LOGGER.info("Current Total Profit and Loss: "+totalProfitAndLoss);
-			if(this.getDayTarget()<=0) {
-				this.setDayTarget(12000.00);
-			}
-			if(totalProfitAndLoss>15000 || totalProfitAndLoss <=-20000) {
-				this.setDayTradingAllowed(false);
-			}
 			if (orderList != null && orderList.size() > 0) {
 				for (Order order2 : orderList) {
 					OrderResponse result = convertOrderResponse(order2, tradeRequest);
@@ -328,10 +363,12 @@ public double calculateProfitAndLoss(String userId) {
 						LOGGER.info("Order Price: "+order2.price+" Order Average Price: "+order2.averagePrice);
 						if(order2.averagePrice!=null) {
 							cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), Double.parseDouble(order2.averagePrice));
+							cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
 						}
 					} else if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
 						orderResponseRepository.save(result);
+						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
 						
 					}else {
 						LOGGER.info("No order id matched......");

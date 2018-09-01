@@ -185,9 +185,9 @@ public class InitiateKiteController {
 			Long dayFriction = 86400000L;
 			Date historicalToDate = dateFormat.parse(dateFormat.format(new Date(System.currentTimeMillis())));
 			Date historicalFromDate = dateFormat
-					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction*2))));
+					.parse(dateFormat.format(new Date(historicalToDate.getTime() - (dayFriction))));
 			tradePortZerodhaConnect.startBackTesting(kiteconnect, instrumentTokens, historicalFromDate,
-					historicalToDate, "5minute", false);
+					historicalToDate, "minute", false);
 			
 			Map<String, List<Position>> map=tradePortZerodhaConnect.getPositions(userId, requestToken);
 			if(map!=null) {
@@ -216,6 +216,7 @@ public class InitiateKiteController {
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(false);
+			tradePortZerodhaConnect.setDayTradingAllowed(true);
 			tradePortZerodhaConnect.tickerUsage(kiteconnect, instrumentTokens);
 		} catch (IOException | WebSocketException | KiteException e) {
 			e.printStackTrace();
