@@ -90,6 +90,8 @@ public class KiteConnectService {
 	private IgniteCache<Long, Boolean> startTrade;
 	private IgniteCache<String, String> userSession;
 	private IgniteCache<String, Double> cacheTotalProfitAndLoss;
+	private IgniteCache<Long, Integer> cacheOpenTrades;
+	private IgniteCache<Long, String> cacheProductType;
 	private double dayTarget;
 	
 	private boolean backTestFlag;
@@ -179,7 +181,11 @@ public class KiteConnectService {
 		 CacheConfiguration<String, Double> ccfgTotalProfitAndLoss = new CacheConfiguration<String, Double>("CacheTotalProfitAndLoss");
 		 this.cacheTotalProfitAndLoss = igniteConfig.getInstance().getOrCreateCache(ccfgTotalProfitAndLoss);
 		 
-		 
+		 CacheConfiguration<Long, Integer> ccfgOpenTrades = new CacheConfiguration<Long, Integer>("CachedOpenTrades");
+			this.cacheOpenTrades = igniteConfig.getInstance().getOrCreateCache(ccfgOpenTrades);
+			
+			CacheConfiguration<Long, String> ccfgProductType = new CacheConfiguration<Long, String>("CachedProductType");
+			this.cacheProductType = igniteConfig.getInstance().getOrCreateCache(ccfgProductType);
 		 
 	     this.backTestFlag=false;
 	     this.calculateStopLossFlag=false;
@@ -243,6 +249,7 @@ public double calculateProfitAndLoss(String userId,String requestToken) {
 	LOGGER.info("Calculate Total Profit and Loss User ID and Request Token: "+userId+"  "+requestToken);
 	double totalProfitAndLoss=0;
 		Map<String, List<Position>> map=null;
+		
 		try {
 			map = getPositions(userId, requestToken);
 		} catch (IOException | KiteException e) {
@@ -258,20 +265,22 @@ public double calculateProfitAndLoss(String userId,String requestToken) {
 							Position position=positionList.get(i);
 							totalProfitAndLoss=totalProfitAndLoss+position.pnl;
 							if(position.netQuantity>0) {
-								if(Decimal.valueOf(totalProfitAndLoss).isGreaterThan(15000) || Decimal.valueOf(totalProfitAndLoss).isLessThan(1500)) {
-									this.setDayTradingAllowed(false);
-									LOGGER.info("Sending Instrument Token: "+position.instrumentToken+" to squrare off as target meet "+totalProfitAndLoss+" Trading Allowed flag: "+isDayTradingAllowed());
-									squareOff(Long.parseLong(position.instrumentToken),userId);
-									}
-									
-								}else {
-									this.setDayTradingAllowed(true);
-								}
+								cacheOpenTrades.put(Long.parseLong(position.instrumentToken), position.netQuantity);
 							}
 						}
 					}
 				}
 			}
+		}
+			/*if(Decimal.valueOf(totalProfitAndLoss).isGreaterThan(15000) || Decimal.valueOf(totalProfitAndLoss).isLessThan(1500)) {
+				this.setDayTradingAllowed(false);
+				LOGGER.info("Sending Instrument Token: "+position.instrumentToken+" to squrare off as target meet "+totalProfitAndLoss+" Trading Allowed flag: "+isDayTradingAllowed());
+				squareOff(Long.parseLong(position.instrumentToken),userId);
+				}
+				
+			}else {
+				this.setDayTradingAllowed(true);
+			}*/
 	return totalProfitAndLoss;
 }
 	
@@ -294,9 +303,13 @@ public double calculateProfitAndLoss(String userId,String requestToken) {
 					quantity=5;
 				}
 				orderParams.quantity = instrument.getLot_size()* quantity;
+				if(cacheProductType!=null && cacheProductType.containsKey(tradeRequest.getInstrumentToken())) {
+					orderParams.product=cacheProductType.get(tradeRequest.getInstrumentToken());
+				}else {
+					orderParams.product = Constants.PRODUCT_MIS;
+				}
 				orderParams.orderType = Constants.ORDER_TYPE_MARKET;
 				orderParams.tradingsymbol = tradingSymbol;
-				orderParams.product = Constants.PRODUCT_MIS;
 				orderParams.exchange = Constants.EXCHANGE_NFO;
 				orderParams.transactionType = tradeRequest.getTransactionType().toUpperCase();
 				orderParams.validity = Constants.VALIDITY_DAY;
@@ -364,6 +377,7 @@ public double calculateProfitAndLoss(String userId,String requestToken) {
 						if(order2.averagePrice!=null) {
 							cachePurchasedPrice.put(tradeRequest.getInstrumentToken(), Double.parseDouble(order2.averagePrice));
 							cacheTradeOrder.put(tradeRequest.getInstrumentToken(), Constants.TRANSACTION_TYPE_BUY);
+							cacheOpenTrades.put(tradeRequest.getInstrumentToken(), Integer.parseInt(order2.quantity));
 						}
 					} else if (order2.orderId.equalsIgnoreCase(order.orderId) && order2 != null && order2.transactionType.equalsIgnoreCase("Sell") && order2.status.equalsIgnoreCase("Complete")) {
 						cacheTradeOrder.remove(tradeRequest.getInstrumentToken());
@@ -383,7 +397,7 @@ public double calculateProfitAndLoss(String userId,String requestToken) {
 		
 	}
 	protected void calculateTrailStoLoss(long instrumentToken) {
-		if(this.cachePurchasedPrice!=null && this.cachePurchasedPrice.get(instrumentToken)!=null) {
+		if(this.cachePurchasedPrice!=null && this.cachePurchasedPrice.containsKey(instrumentToken)) {
 			double stopLossDistance=0.0;
 			double stopLossLimit=this.cacheMaxTrailStopLoss.get(instrumentToken);
 			double purcahsePrice=this.cachePurchasedPrice.get(instrumentToken);

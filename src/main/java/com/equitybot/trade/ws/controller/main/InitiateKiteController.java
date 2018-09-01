@@ -30,6 +30,7 @@ import com.equitybot.trade.ws.service.kite.KiteConnectService;
 import com.neovisionaries.ws.client.WebSocketException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
+import com.zerodhatech.kiteconnect.utils.Constants;
 import com.zerodhatech.models.Instrument;
 import com.zerodhatech.models.Position;
 import com.zerodhatech.models.Tick;
@@ -60,6 +61,9 @@ public class InitiateKiteController {
 	private IgniteCache<Long, Double> cacheTargetPrice;
 	private IgniteCache<String, KiteConnect> cacheUserSession;
 	private IgniteCache<Long, String> cacheTradeOrder;
+	private IgniteCache<Long, Integer> cacheOpenTrades;
+	private IgniteCache<Long, Double> cachePurchasedPrice;
+	private IgniteCache<Long, String> cacheProductType;
 
 	public InitiateKiteController() {
 		CacheConfiguration<Long, Double> ccfgcacheMaxTrailStopLoss = new CacheConfiguration<Long, Double>(
@@ -93,6 +97,15 @@ public class InitiateKiteController {
 		
 		CacheConfiguration<Long, String> ccfgOrderDetails = new CacheConfiguration<Long, String>("CachedTradeOrder");
 		this.cacheTradeOrder = igniteConfig.getInstance().getOrCreateCache(ccfgOrderDetails);
+		
+		CacheConfiguration<Long, Integer> ccfgOpenTrades = new CacheConfiguration<Long, Integer>("CachedOpenTrades");
+		this.cacheOpenTrades = igniteConfig.getInstance().getOrCreateCache(ccfgOpenTrades);
+		
+		CacheConfiguration<Long, Double> ccfgCachePurchasedPrice = new CacheConfiguration<Long, Double>("CachePurchasedPrice");
+		this.cachePurchasedPrice = igniteConfig.getInstance().getOrCreateCache(ccfgCachePurchasedPrice);
+		
+		CacheConfiguration<Long, String> ccfgProductType = new CacheConfiguration<Long, String>("CachedProductType");
+		this.cacheProductType = igniteConfig.getInstance().getOrCreateCache(ccfgProductType);
 	}
 
 	@GetMapping("/process/v1.0/{userId}/{requestToken}")
@@ -197,10 +210,16 @@ public class InitiateKiteController {
 						if(positionList!=null && positionList.size()>0) {
 							for(int i=0;i<positionList.size();i++) {
 								Position position=positionList.get(i);
-								System.out.println(position.instrumentToken+" Started: "+position.netQuantity+" Total profit loss: "+position.pnl);
 								if(position.netQuantity>0) {
 									instrumentTokens.add(Long.parseLong(position.instrumentToken));
-									System.out.println(position.instrumentToken+" Started: "+position.netQuantity);
+									cacheOpenTrades.put(Long.parseLong(position.instrumentToken), position.netQuantity);
+									cacheTradeOrder.put(Long.parseLong(position.instrumentToken), Constants.TRANSACTION_TYPE_BUY);
+									InstrumentModel instrument=instrumentRepository.findByInstrumentToken(position.instrumentToken);
+									cacheQuantity.put(Long.parseLong(position.instrumentToken), position.netQuantity/instrument.getLot_size());
+									cachePurchasedPrice.put(Long.parseLong(position.instrumentToken), position.buyPrice);
+									cacheStopLossValue.put(Long.parseLong(position.instrumentToken), 10.0);
+									cacheProductType.put(Long.parseLong(position.instrumentToken), Constants.PRODUCT_NRML);
+									System.out.println(position.instrumentToken+" Started: "+position.netQuantity+" Total profit loss: "+position.pnl+" cached quantity: "+cacheQuantity.get(Long.parseLong(position.instrumentToken)));
 								}
 							}
 						}
@@ -213,6 +232,7 @@ public class InitiateKiteController {
 				for (Iterator<Long> iterator = instrumentTokens.iterator(); iterator.hasNext();) {
 					Long long1 = (Long) iterator.next();
 					startTrade.put(long1, true);
+					System.out.println("Trade started for instrument: "+long1);
 				}
 			}
 			tradePortZerodhaConnect.setBackTestFlag(false);
