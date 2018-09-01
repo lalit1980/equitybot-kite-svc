@@ -2,6 +2,7 @@ package com.equitybot.historicaldata.bar;
 
 import com.equitybot.common.model.BarDTO;
 import com.equitybot.common.model.TickDTO;
+import com.equitybot.common.util.Util;
 import com.equitybot.historicaldata.cache.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -45,7 +46,7 @@ public class HLOCBarHGenerator {
         System.out.println(" -- instrument : " + tickDTO.getInstrumentToken() + " # Thread Name : " + name +
                 "  # barSize : " + barSize);
 
-        String instrumentAndBarSize = tickDTO.getInstrumentToken() + "-" + barSize;
+        String instrumentAndBarSize = Util.barName(tickDTO.getInstrumentToken(),barSize);
         BarModel barModel = dataProviderCache.getTickDataModel(instrumentAndBarSize);
         if (barModel == null) {
             barModel = getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize);
@@ -53,7 +54,7 @@ public class HLOCBarHGenerator {
         act(barModel, tickDTO);
         if (barModel.getTickCount() == barSize) {
             BarDTO barDTO = getBarDTOS(barModel);
-            tickDTO.getBarDTOS().add(barDTO);
+            tickDTO.getBarDTOS().put(instrumentAndBarSize,barDTO);
             dataProviderCache.putOnTickDataModelCache(instrumentAndBarSize, getNewTickDataBarModel(tickDTO.getInstrumentToken(), barSize));
             return CompletableFuture.completedFuture(barDTO);
 

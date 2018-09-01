@@ -3,6 +3,7 @@ package com.equitybot.algorithm.indicator.supertrend;
 import com.equitybot.algorithm.cache.AlgorithmCache;
 import com.equitybot.common.model.BarDTO;
 import com.equitybot.common.model.SuperTrendDTO;
+import com.equitybot.common.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,8 +111,7 @@ public class SuperTrendIndicator {
         System.out.println(" -- instrument : " + bar.getInstrument() + " # Thread Name : " + name +
                 "  # barSize : " + bar.getBarSize() + " # multiplier : " + multiplier + " # period : " + period);
 
-        String instrumentBarSizeMultiplierPeriod = bar.getInstrument() + "-" + bar.getBarSize()
-                + "-" + multiplier + "-" + period;
+        String instrumentBarSizeMultiplierPeriod = Util.superTrendName(bar.getInstrument(), bar.getBarSize(), multiplier, period);
         SuperTrendModel superTrendModel = this.algorithmCache.getSuperTrendModel(instrumentBarSizeMultiplierPeriod);
         if (superTrendModel == null) {
             superTrendModel = getNewSuperTrendModel(bar.getInstrument(), bar.getBarSize(), multiplier, period);
@@ -121,7 +121,7 @@ public class SuperTrendIndicator {
         SuperTrendDTO superTrendDTO = null;
         if (superTrendModel.buySell != null) {
             superTrendDTO = getSuperTrendDTO(superTrendModel);
-            bar.getSuperTrends().add(superTrendDTO);
+            bar.getSuperTrends().put(instrumentBarSizeMultiplierPeriod, superTrendDTO);
         }
         return CompletableFuture.completedFuture(superTrendDTO);
     }

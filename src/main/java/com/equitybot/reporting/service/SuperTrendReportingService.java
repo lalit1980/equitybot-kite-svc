@@ -28,8 +28,8 @@ public class SuperTrendReportingService {
     public void saveRecord(TickDTO tick) throws IOException {
 
         StringBuilder result;
-        for (BarDTO bar : tick.getBarDTOS()) {
-            for (SuperTrendDTO superTrend : bar.getSuperTrends()) {
+        for (BarDTO bar : tick.getBarDTOS().values()) {
+            for (SuperTrendDTO superTrend : bar.getSuperTrends().values()) {
                 result = new StringBuilder();
                 result.append(bar.getTimestamp());
                 result.append(",");

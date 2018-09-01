@@ -2,6 +2,7 @@ package com.equitybot.common.model;
 
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TickDTO {
     private String mode;
@@ -25,10 +26,10 @@ public class TickDTO {
     private boolean dummyData;
     private Date tickTimestamp;
     private Map<String, ArrayList<DepthModel>> depth;
-    private List<BarDTO> barDTOS;
+    private Map<String, BarDTO> barDTOS;
 
     public TickDTO() {
-        this.barDTOS = Collections.synchronizedList(new ArrayList<>());
+        this.barDTOS = new ConcurrentHashMap<>();
     }
 
     public String getMode() {
@@ -191,11 +192,11 @@ public class TickDTO {
         this.depth = depth;
     }
 
-    public List<BarDTO> getBarDTOS() {
+    public Map<String, BarDTO> getBarDTOS() {
         return barDTOS;
     }
 
-    public void setBarDTOS(List<BarDTO> barDTOS) {
+    public void setBarDTOS(Map<String, BarDTO> barDTOS) {
         this.barDTOS = barDTOS;
     }
 

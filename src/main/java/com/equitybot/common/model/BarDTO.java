@@ -2,10 +2,8 @@ package com.equitybot.common.model;
 
 import org.ta4j.core.Decimal;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BarDTO {
 
@@ -17,10 +15,10 @@ public class BarDTO {
     private Decimal closePrice;
     private Decimal volume;
     private Date timestamp;
-    private List<SuperTrendDTO> superTrends;
+    private Map<String, SuperTrendDTO> superTrends;
 
     public BarDTO() {
-        this.superTrends = Collections.synchronizedList(new ArrayList<>());
+        this.superTrends = new ConcurrentHashMap<>();
     }
 
     public BarDTO(long instrument, int barSize, Decimal highPrice, Decimal lowPrice, Decimal openPrice,
@@ -33,11 +31,11 @@ public class BarDTO {
         this.closePrice = closePrice;
         this.volume = volume;
         this.timestamp = timestamp;
-        this.superTrends = Collections.synchronizedList(new ArrayList<>());
+        this.superTrends = new ConcurrentHashMap<>();
     }
 
     public BarDTO(long instrument, int barSize, Decimal highPrice, Decimal lowPrice, Decimal openPrice,
-                  Decimal closePrice, Decimal volume, Date timestamp, List<SuperTrendDTO> superTrends) {
+                  Decimal closePrice, Decimal volume, Date timestamp, Map<String, SuperTrendDTO>  superTrends) {
         this.instrument = instrument;
         this.barSize = barSize;
         this.highPrice = highPrice;
@@ -113,11 +111,11 @@ public class BarDTO {
         this.timestamp = timestamp;
     }
 
-    public List<SuperTrendDTO> getSuperTrends() {
+    public Map<String, SuperTrendDTO> getSuperTrends() {
         return superTrends;
     }
 
-    public void setSuperTrends(List<SuperTrendDTO> superTrends) {
+    public void setSuperTrends(Map<String, SuperTrendDTO> superTrends) {
         this.superTrends = superTrends;
     }
 
